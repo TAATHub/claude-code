@@ -1,0 +1,20 @@
+{
+  "name": "taat-claude-plugins",
+  "owner": {
+    "name": "TAAT"
+  },
+  "metadata": {
+    "description": "A collection of Claude Code plugins for various integrations",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "discord-messaging",
+      "source": "./plugins/discord-messaging",
+      "description": "Discord REST API operations for messages, threads, and reactions",
+      "version": "1.0.0",
+      "category": "communication",
+      "tags": ["discord", "messaging", "api", "bot"]
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "name": "discord-messaging",
+  "version": "1.0.0",
+  "description": "Discord REST API operations for messages, threads, and reactions",
+  "author": {
+    "name": "TAAT"
+  },
+  "homepage": "https://github.com/taat/claude-code",
+  "repository": "https://github.com/taat/claude-code",
+  "license": "MIT",
+  "keywords": ["discord", "messaging", "api", "bot"],
+  "skills": "./skills/"
+}
