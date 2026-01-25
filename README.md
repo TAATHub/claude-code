@@ -12,22 +12,6 @@ This repository provides reusable components to enhance your Claude Code workflo
 
 ## Prerequisites
 
-### Discord Bot Token
-
-1. Go to [Discord Developer Portal](https://discord.com/developers/applications)
-2. Create a new application or select existing one
-3. Navigate to "Bot" section and copy the token
-4. Set the token as environment variable:
-
-```bash
-# Local execution
-export DISCORD_BOT_TOKEN="your-bot-token-here"
-
-# GitHub Actions (add to repository secrets)
-# Settings > Secrets and variables > Actions > New repository secret
-# Name: DISCORD_BOT_TOKEN
-```
-
 ### Required Tools
 
 - `curl` - for API requests
@@ -37,18 +21,18 @@ export DISCORD_BOT_TOKEN="your-bot-token-here"
 
 ### Add Marketplace
 ```bash
-/plugin marketplace add taat/claude-code
+/plugin marketplace add TAATHub/claude-code
 ```
 
 ### Install Plugin
 ```bash
-/plugin install discord-messaging@taat-claude-plugins
+/plugin install discord-messaging@taat-marketplace
 ```
 
 ## Available Plugins
 
-### discord-messaging
-Discord REST API operations for messages, threads, and reactions.
+### [discord-messaging](plugins/discord-messaging/)
+Discord REST API operations for messages, threads, and reactions. See [documentation](plugins/discord-messaging/README.md) for setup and usage.
 
 ## Directory Structure
 
