@@ -1,11 +1,20 @@
 #!/bin/bash
+set -euo pipefail
 # Script to calculate Discord Snowflake ID from a date
 # Usage:
 #   ./date-to-snowflake.sh                # Snowflake ID for today at 00:00:00 UTC
 #   ./date-to-snowflake.sh 2024-01-15     # Snowflake ID for specified date at 00:00:00 UTC
 #   ./date-to-snowflake.sh 2024-01-15 JST # Snowflake ID for specified date at 00:00:00 JST (= previous day 15:00:00 UTC)
 
-if [ -n "$1" ]; then
+# Help option
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+    echo "Usage: $0 [YYYY-MM-DD] [TIMEZONE]"
+    echo "  YYYY-MM-DD  Target date (default: today)"
+    echo "  TIMEZONE    UTC or JST (default: UTC)"
+    exit 0
+fi
+
+if [ -n "${1:-}" ]; then
     TARGET_DATE="$1"
 else
     TARGET_DATE=$(date -u "+%Y-%m-%d")
@@ -13,6 +22,18 @@ fi
 
 # Second argument specifies timezone (special handling for JST)
 TIMEZONE="${2:-UTC}"
+
+# Validate date format
+if [[ -n "$TARGET_DATE" && ! "$TARGET_DATE" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+    echo "ERROR: Invalid date format. Please use YYYY-MM-DD format." >&2
+    exit 1
+fi
+
+# Validate timezone
+if [[ "$TIMEZONE" != "UTC" && "$TIMEZONE" != "JST" ]]; then
+    echo "ERROR: Invalid timezone. Supported values: UTC, JST" >&2
+    exit 1
+fi
 
 # Detect OS and switch date command accordingly
 if [[ "$OSTYPE" == "darwin"* ]]; then

@@ -16,6 +16,15 @@ curl -s "https://discord.com/api/v10/channels/{channel_id}/messages?limit=20" \
   -H "User-Agent: DiscordBot (https://discord.com, 1.0)"
 ```
 
+### Query Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `limit` | integer | Max messages to return (1-100, default 50) |
+| `before` | snowflake | Get messages before this message ID |
+| `after` | snowflake | Get messages after this message ID |
+| `around` | snowflake | Get messages around this message ID |
+
 ### Date Filtering (before/after)
 
 Discord API requires dates to be converted to Snowflake IDs.
@@ -136,3 +145,58 @@ curl -s -X POST "https://discord.com/api/v10/channels/{channel_id}/messages" \
   -F "files[0]=@/path/to/image1.png" \
   -F "files[1]=@/path/to/image2.jpg"
 ```
+
+## Error Responses
+
+### 401 Unauthorized
+
+Missing or invalid authentication token.
+
+```json
+{
+  "message": "401: Unauthorized",
+  "code": 0
+}
+```
+
+**Solution:** Verify that `$DISCORD_BOT_TOKEN` is set correctly.
+
+### 403 Forbidden
+
+Bot lacks required permissions for the channel.
+
+```json
+{
+  "message": "Missing Access",
+  "code": 50001
+}
+```
+
+**Solution:** Ensure the bot has `VIEW_CHANNEL` and `READ_MESSAGE_HISTORY` permissions.
+
+### 404 Not Found
+
+Channel or message does not exist.
+
+```json
+{
+  "message": "Unknown Channel",
+  "code": 10003
+}
+```
+
+**Solution:** Verify the channel ID is correct and the bot has access.
+
+### 429 Too Many Requests
+
+Rate limit exceeded.
+
+```json
+{
+  "message": "You are being rate limited.",
+  "retry_after": 1.5,
+  "global": false
+}
+```
+
+**Solution:** Wait for `retry_after` seconds before retrying.
