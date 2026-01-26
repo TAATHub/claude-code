@@ -112,7 +112,7 @@ curl -s -X POST "https://discord.com/api/v10/channels/{channel_id}/messages" \
   -H "Authorization: Bot $DISCORD_BOT_TOKEN" \
   -H "User-Agent: DiscordBot (https://discord.com, 1.0)" \
   -H "Content-Type: application/json" \
-  -d '{"content": "Message content"}'
+  -d "{\"content\": \"Message content\"}"
 ```
 
 ### Send Image
@@ -121,7 +121,7 @@ curl -s -X POST "https://discord.com/api/v10/channels/{channel_id}/messages" \
 curl -s -X POST "https://discord.com/api/v10/channels/{channel_id}/messages" \
   -H "Authorization: Bot $DISCORD_BOT_TOKEN" \
   -H "User-Agent: DiscordBot (https://discord.com, 1.0)" \
-  -F 'payload_json={"content":""}' \
+  -F "payload_json={\"content\":\"\"}" \
   -F "files[0]=@/path/to/image.png"
 ```
 
@@ -131,7 +131,7 @@ curl -s -X POST "https://discord.com/api/v10/channels/{channel_id}/messages" \
 curl -s -X POST "https://discord.com/api/v10/channels/{channel_id}/messages" \
   -H "Authorization: Bot $DISCORD_BOT_TOKEN" \
   -H "User-Agent: DiscordBot (https://discord.com, 1.0)" \
-  -F 'payload_json={"content":"Message content"}' \
+  -F "payload_json={\"content\":\"Message content\"}" \
   -F "files[0]=@/path/to/image.png"
 ```
 
@@ -141,7 +141,7 @@ curl -s -X POST "https://discord.com/api/v10/channels/{channel_id}/messages" \
 curl -s -X POST "https://discord.com/api/v10/channels/{channel_id}/messages" \
   -H "Authorization: Bot $DISCORD_BOT_TOKEN" \
   -H "User-Agent: DiscordBot (https://discord.com, 1.0)" \
-  -F 'payload_json={"content":"Message content"}' \
+  -F "payload_json={\"content\":\"Message content\"}" \
   -F "files[0]=@/path/to/image1.png" \
   -F "files[1]=@/path/to/image2.jpg"
 ```

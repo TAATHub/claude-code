@@ -33,7 +33,7 @@ curl -s -X POST "https://discord.com/api/v10/channels/{channel_id}/messages" \
   -H "Authorization: Bot $DISCORD_BOT_TOKEN" \
   -H "User-Agent: DiscordBot (https://discord.com, 1.0)" \
   -H "Content-Type: application/json" \
-  -d '{"content": "Message content"}'
+  -d "{\"content\": \"Message content\"}"
 ```
 
 For details (sending images, etc.), see [references/messages.md](references/messages.md).
