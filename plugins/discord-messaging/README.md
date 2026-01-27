@@ -17,14 +17,8 @@ Discord REST API operations for messages, threads, and reactions.
 3. Navigate to "Bot" section and copy the token
 4. Set the token as environment variable:
 
-```bash
-# Local execution
-export DISCORD_BOT_TOKEN="your-bot-token-here"
-
-# GitHub Actions (add to repository secrets)
-# Settings > Secrets and variables > Actions > New repository secret
-# Name: DISCORD_BOT_TOKEN
-```
+- **Local**: Set `DISCORD_BOT_TOKEN` in `.claude/settings.local.json` `env`
+- **Claude Code Action**: Add `DISCORD_BOT_TOKEN` to repository secrets (Settings > Secrets and variables > Actions > New repository secret), then set in `settings` `env`
 
 ### Required Bot Permissions
 
