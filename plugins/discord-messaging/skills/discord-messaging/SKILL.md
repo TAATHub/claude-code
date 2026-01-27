@@ -10,12 +10,6 @@ allowed-tools:
 
 Retrieve and send messages using the Discord REST API.
 
-## Setup
-
-DISCORD_BOT_TOKEN
-- Local execution: Load as environment variable `$DISCORD_BOT_TOKEN`
-- GitHub Action: Load from secret `${{ secrets.DISCORD_BOT_TOKEN }}`
-
 ## Get Messages
 
 ```bash
