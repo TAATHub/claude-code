@@ -12,7 +12,7 @@
       "name": "discord-messaging",
       "source": "./plugins/discord-messaging",
       "description": "Discord REST API operations for messages, threads, and reactions",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "category": "communication",
       "tags": ["discord", "messaging", "api", "bot"]
     }
