@@ -1,82 +1,95 @@
-# Reaction Operations - Detailed Reference
+# Reaction Operations - Reference
 
-## Add Unicode Emoji
-
-```bash
-# Add ✅ (white_check_mark)
-curl -s -X PUT "https://discord.com/api/v10/channels/{channel_id}/messages/{message_id}/reactions/%E2%9C%85/@me" \
-  -H "Authorization: Bot $DISCORD_BOT_TOKEN" \
-  -H "User-Agent: DiscordBot (https://discord.com, 1.0)" \
-  -H "Content-Length: 0"
-
-# Add 👍 (thumbsup)
-curl -s -X PUT "https://discord.com/api/v10/channels/{channel_id}/messages/{message_id}/reactions/%F0%9F%91%8D/@me" \
-  -H "Authorization: Bot $DISCORD_BOT_TOKEN" \
-  -H "User-Agent: DiscordBot (https://discord.com, 1.0)" \
-  -H "Content-Length: 0"
-```
-
-**Note**: Unicode emojis require URL encoding
-- ✅ → `%E2%9C%85`
-- 👍 → `%F0%9F%91%8D`
-
-## Add Custom Emoji
+## Script Usage
 
 ```bash
-curl -s -X PUT "https://discord.com/api/v10/channels/{channel_id}/messages/{message_id}/reactions/{emoji_name}:{emoji_id}/@me" \
-  -H "Authorization: Bot $DISCORD_BOT_TOKEN" \
-  -H "User-Agent: DiscordBot (https://discord.com, 1.0)" \
-  -H "Content-Length: 0"
+# Add reaction
+scripts/reactions.sh add <channel_id> <message_id> <emoji>
+
+# Remove own reaction
+scripts/reactions.sh remove <channel_id> <message_id> <emoji>
+
+# Remove another user's reaction (requires MANAGE_MESSAGES)
+scripts/reactions.sh remove-user <channel_id> <message_id> <emoji> <user_id>
+
+# Remove all reactions (requires MANAGE_MESSAGES)
+scripts/reactions.sh remove-all <channel_id> <message_id>
+
+# Remove all reactions of specific emoji (requires MANAGE_MESSAGES)
+scripts/reactions.sh remove-emoji <channel_id> <message_id> <emoji>
+
+# List users who reacted
+scripts/reactions.sh list <channel_id> <message_id> <emoji> [--limit <n>] [--after <id>]
 ```
 
-## Response
+## Emoji Format
 
-Returns 204 No Content on success (no response body)
+### Unicode Emoji (URL Encoded)
 
-## Remove Reaction
+Unicode emojis must be URL-encoded:
 
-### Remove Own Reaction
+| Emoji | Name | URL Encoded |
+|-------|------|-------------|
+| ✅ | white_check_mark | `%E2%9C%85` |
+| 👍 | thumbsup | `%F0%9F%91%8D` |
+| 👎 | thumbsdown | `%F0%9F%91%8E` |
+| ❤️ | heart | `%E2%9D%A4%EF%B8%8F` |
+| 🎉 | tada | `%F0%9F%8E%89` |
+| 👀 | eyes | `%F0%9F%91%80` |
+| 🔥 | fire | `%F0%9F%94%A5` |
+| ⭐ | star | `%E2%AD%90` |
+
+### Custom Emoji
+
+Custom emojis use `name:id` format:
 
 ```bash
-curl -X DELETE "https://discord.com/api/v10/channels/{channel_id}/messages/{message_id}/reactions/{emoji}/@me" \
-  -H "Authorization: Bot $DISCORD_BOT_TOKEN"
+scripts/reactions.sh add <channel_id> <message_id> "custom_emoji:123456789"
 ```
 
-### Remove User's Reaction
+To find custom emoji ID:
+1. Type `\:emoji_name:` in Discord chat
+2. The ID will be shown in the format `<:name:id>`
 
-```bash
-curl -X DELETE "https://discord.com/api/v10/channels/{channel_id}/messages/{message_id}/reactions/{emoji}/{user_id}" \
-  -H "Authorization: Bot $DISCORD_BOT_TOKEN"
-```
-
-**Note:** Requires `MANAGE_MESSAGES` permission to remove other users' reactions.
-
-### Remove All Reactions
-
-```bash
-curl -X DELETE "https://discord.com/api/v10/channels/{channel_id}/messages/{message_id}/reactions" \
-  -H "Authorization: Bot $DISCORD_BOT_TOKEN"
-```
-
-### Remove All Reactions for Emoji
-
-```bash
-curl -X DELETE "https://discord.com/api/v10/channels/{channel_id}/messages/{message_id}/reactions/{emoji}" \
-  -H "Authorization: Bot $DISCORD_BOT_TOKEN"
-```
-
-## Get Reactions
-
-Get list of users who reacted with a specific emoji.
-
-```bash
-curl -s "https://discord.com/api/v10/channels/{channel_id}/messages/{message_id}/reactions/{emoji}" \
-  -H "Authorization: Bot $DISCORD_BOT_TOKEN"
-```
-
-### Query Parameters
+## Query Parameters (list)
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `after` | snowflake | Get users after this user ID |
-| `limit` | integer | Max users to return (1-100, default 25) |
+| `--limit` | integer | Max users to return (1-100, default 25) |
+| `--after` | snowflake | Get users after this user ID |
+
+## Response
+
+### Add/Remove Reactions
+
+Returns 204 No Content on success (no response body).
+
+### List Reactions
+
+Returns array of user objects:
+
+```json
+[
+  {
+    "id": "123456789",
+    "username": "user1",
+    "discriminator": "0",
+    "avatar": "abc123..."
+  },
+  {
+    "id": "987654321",
+    "username": "user2",
+    "discriminator": "0",
+    "avatar": "def456..."
+  }
+]
+```
+
+## Permissions
+
+| Operation | Required Permission |
+|-----------|---------------------|
+| Add own reaction | None (bot must have access) |
+| Remove own reaction | None |
+| Remove others' reactions | `MANAGE_MESSAGES` |
+| Remove all reactions | `MANAGE_MESSAGES` |

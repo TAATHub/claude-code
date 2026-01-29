@@ -1,6 +1,25 @@
-# Thread Operations - Detailed Reference
+# Thread Operations - Reference
 
 Discord threads are treated as a type of channel. Thread IDs can be used the same way as channel IDs.
+
+## Script Usage
+
+```bash
+# Get thread information
+scripts/threads.sh info <thread_id>
+
+# Get messages in thread
+scripts/threads.sh messages <thread_id> [--limit <n>] [--before <id>] [--after <id>]
+
+# List active threads in guild
+scripts/threads.sh active <guild_id>
+
+# List archived threads in channel
+scripts/threads.sh archived <channel_id> [--type <public|private>] [--limit <n>] [--before <timestamp>]
+
+# Send message to thread
+scripts/threads.sh send <thread_id> <content>
+```
 
 ## How to Get Thread ID
 
@@ -8,26 +27,27 @@ Discord threads are treated as a type of channel. Thread IDs can be used the sam
 2. Right-click on a thread → "Copy ID"
 3. Or retrieve from the Active Threads API
 
-## Get Messages in Thread
+## Query Parameters
 
-Since threads are treated as channels, use the same message retrieval API.
+### messages
 
-```bash
-# Get latest 50 messages in a thread
-curl -s "https://discord.com/api/v10/channels/{thread_id}/messages?limit=50" \
-  -H "Authorization: Bot $DISCORD_BOT_TOKEN" \
-  -H "User-Agent: DiscordBot (https://discord.com, 1.0)"
-```
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `--limit` | integer | Max messages (1-100, default 50) |
+| `--before` | snowflake | Get messages before this ID |
+| `--after` | snowflake | Get messages after this ID |
 
-## Get Thread Info
+### archived
 
-```bash
-curl -s "https://discord.com/api/v10/channels/{thread_id}" \
-  -H "Authorization: Bot $DISCORD_BOT_TOKEN" \
-  -H "User-Agent: DiscordBot (https://discord.com, 1.0)"
-```
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `--type` | string | `public` or `private` (default: public) |
+| `--limit` | integer | Max threads (1-100, default 50) |
+| `--before` | timestamp | ISO8601 timestamp for pagination |
 
-### Response Example
+## Response Examples
+
+### Thread Info
 
 ```json
 {
@@ -54,19 +74,7 @@ curl -s "https://discord.com/api/v10/channels/{thread_id}" \
 - `thread_metadata.archived`: Archive status
 - `thread_metadata.locked`: Lock status
 
-## Get Active Threads List
-
-Retrieve active (non-archived) threads in a server.
-
-**Note**: Channel-level API is deprecated; use the guild (server) level API instead.
-
-```bash
-curl -s "https://discord.com/api/v10/guilds/{guild_id}/threads/active" \
-  -H "Authorization: Bot $DISCORD_BOT_TOKEN" \
-  -H "User-Agent: DiscordBot (https://discord.com, 1.0)"
-```
-
-### Response Example
+### Active Threads
 
 ```json
 {
@@ -95,37 +103,7 @@ curl -s "https://discord.com/api/v10/guilds/{guild_id}/threads/active" \
 }
 ```
 
-## Get Archived Threads List
-
-Retrieve archived threads in a specific channel.
-
-### Public Archived Threads
-
-```bash
-# Basic
-curl -s "https://discord.com/api/v10/channels/{channel_id}/threads/archived/public" \
-  -H "Authorization: Bot $DISCORD_BOT_TOKEN" \
-  -H "User-Agent: DiscordBot (https://discord.com, 1.0)"
-
-# With parameters
-curl -s "https://discord.com/api/v10/channels/{channel_id}/threads/archived/public?limit=10&before=2024-01-15T00:00:00.000000Z" \
-  -H "Authorization: Bot $DISCORD_BOT_TOKEN" \
-  -H "User-Agent: DiscordBot (https://discord.com, 1.0)"
-```
-
-### Private Archived Threads
-
-```bash
-curl -s "https://discord.com/api/v10/channels/{channel_id}/threads/archived/private" \
-  -H "Authorization: Bot $DISCORD_BOT_TOKEN" \
-  -H "User-Agent: DiscordBot (https://discord.com, 1.0)"
-```
-
-**Parameters:**
-- `limit`: Number of threads to retrieve (1-100, default: 50)
-- `before`: ISO8601 timestamp. Retrieve threads archived before this time.
-
-### Response Example
+### Archived Threads
 
 ```json
 {
@@ -151,14 +129,8 @@ curl -s "https://discord.com/api/v10/channels/{channel_id}/threads/archived/priv
 **Field Descriptions:**
 - `has_more`: `true` if more threads exist (for pagination)
 
-## Send Message to Thread
+## Notes
 
-Use the same API as sending regular messages.
-
-```bash
-curl -s -X POST "https://discord.com/api/v10/channels/{thread_id}/messages" \
-  -H "Authorization: Bot $DISCORD_BOT_TOKEN" \
-  -H "User-Agent: DiscordBot (https://discord.com, 1.0)" \
-  -H "Content-Type: application/json" \
-  -d '{"content": "Message to thread"}'
-```
+- **Active threads API**: Use guild ID, not channel ID
+- **Archived threads API**: Use channel ID, supports both public and private types
+- **Pagination**: Use `--before` with the `archive_timestamp` from the last thread
