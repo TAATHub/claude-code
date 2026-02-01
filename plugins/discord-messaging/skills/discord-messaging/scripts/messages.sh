@@ -5,6 +5,7 @@ set -euo pipefail
 # Usage:
 #   ./messages.sh get <channel_id> [--limit <n>] [--before <id>] [--after <id>] [--around <id>]
 #   ./messages.sh send <channel_id> <content>
+#   ./messages.sh send <channel_id> --json '{"content": "text"}'
 #   ./messages.sh upload <channel_id> [--content <text>] --file <path> [--file <path>...]
 
 show_usage() {
@@ -23,7 +24,9 @@ get <channel_id> [options]
   --around <id>   Get messages around this Snowflake ID
 
 send <channel_id> <content>
+send <channel_id> --json '{"content": "text"}'
   Send a text message to the channel
+  Use --json for complex messages with newlines/emoji (recommended for automation)
 
 upload <channel_id> [options]
   --content <text>   Optional message text
@@ -33,6 +36,7 @@ Examples:
   messages.sh get 123456789 --limit 20
   messages.sh get 123456789 --after 987654321
   messages.sh send 123456789 "Hello, World!"
+  messages.sh send 123456789 --json '{"content": "Line1\\nLine2"}'
   messages.sh upload 123456789 --content "Check this!" --file /path/to/image.png
 EOF
 }
@@ -173,22 +177,35 @@ get_command() {
 # --- send command ---
 send_command() {
     if [ $# -lt 2 ]; then
-        echo "ERROR: channel_id and content are required." >&2
+        echo "ERROR: channel_id and (content or --json) are required." >&2
         exit 1
     fi
     local channel_id="$1"
-    local content="$2"
-
+    shift
     validate_snowflake_id "$channel_id" "channel_id"
 
-    # Escape special characters for JSON
-    content=$(escape_json_string "$content")
+    local json_body=""
+
+    # Option parsing
+    if [ "$1" = "--json" ]; then
+        if [ -z "${2:-}" ]; then
+            echo "ERROR: --json requires a JSON string." >&2
+            exit 1
+        fi
+        # Use JSON body directly
+        json_body="$2"
+    else
+        # Legacy mode: convert text to JSON
+        local content="$1"
+        content=$(escape_json_string "$content")
+        json_body="{\"content\": \"${content}\"}"
+    fi
 
     curl -s -X POST "https://discord.com/api/v10/channels/${channel_id}/messages" \
         -H "Authorization: Bot $DISCORD_BOT_TOKEN" \
         -H "User-Agent: DiscordBot (https://discord.com, 1.0)" \
         -H "Content-Type: application/json" \
-        -d "{\"content\": \"${content}\"}"
+        -d "$json_body"
 }
 
 # --- upload command ---

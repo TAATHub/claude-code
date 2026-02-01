@@ -8,6 +8,7 @@ scripts/messages.sh get <channel_id> [--limit <n>] [--before <id>] [--after <id>
 
 # Send text message
 scripts/messages.sh send <channel_id> <content>
+scripts/messages.sh send <channel_id> --json '{"content": "text"}' # (recommended for automation)
 
 # Send with file attachments
 scripts/messages.sh upload <channel_id> [--content <text>] --file <path> [--file <path>...]
