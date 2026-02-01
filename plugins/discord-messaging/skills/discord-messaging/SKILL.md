@@ -30,8 +30,11 @@ For response format and error handling, see [references/messages.md](references/
 ## Send Messages
 
 ```bash
-# Text message
+# Text message (direct) - for simple messages
 scripts/messages.sh send <channel_id> "Message content"
+
+# Text message (JSON) - recommended for complex messages with newlines/emoji
+scripts/messages.sh send <channel_id> --json '{"content": "Line1\\nLine2 💸"}'
 
 # With file attachment
 scripts/messages.sh upload <channel_id> --file /path/to/image.png
