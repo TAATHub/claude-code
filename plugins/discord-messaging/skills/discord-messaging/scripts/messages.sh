@@ -36,7 +36,7 @@ Examples:
   messages.sh get 123456789 --limit 20
   messages.sh get 123456789 --after 987654321
   messages.sh send 123456789 "Hello, World!"
-  messages.sh send 123456789 --json '{"content": "Line1\\nLine2"}'
+  messages.sh send 123456789 --json '{"content": "Line1\nLine2"}'
   messages.sh upload 123456789 --content "Check this!" --file /path/to/image.png
 EOF
 }
