@@ -1,6 +1,6 @@
 {
   "name": "discord-messaging",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "Discord REST API operations for messages, threads, and reactions",
   "author": {
     "name": "TAAT"
