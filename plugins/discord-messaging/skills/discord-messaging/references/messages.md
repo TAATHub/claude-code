@@ -12,6 +12,9 @@ scripts/messages.sh send <channel_id> --json '{"content": "text"}' # (recommende
 
 # Send with file attachments
 scripts/messages.sh upload <channel_id> [--content <text>] --file <path> [--file <path>...]
+
+# Delete a message
+scripts/messages.sh delete <channel_id> <message_id>
 ```
 
 ## Query Parameters (get)
@@ -22,6 +25,17 @@ scripts/messages.sh upload <channel_id> [--content <text>] --file <path> [--file
 | `--before` | snowflake | Get messages before this message ID |
 | `--after` | snowflake | Get messages after this message ID |
 | `--around` | snowflake | Get messages around this message ID |
+
+## Parameters (delete)
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `channel_id` | snowflake | The channel containing the message |
+| `message_id` | snowflake | The message to delete |
+
+**Permissions:** Deleting your own messages requires no additional permission. Deleting other users' messages requires `MANAGE_MESSAGES` permission.
+
+**Response:** Returns `204 No Content` on success (empty response body).
 
 ## Date Filtering
 
@@ -102,7 +116,7 @@ Bot lacks required permissions for the channel.
 }
 ```
 
-**Solution:** Ensure the bot has `VIEW_CHANNEL` and `READ_MESSAGE_HISTORY` permissions.
+**Solution:** Ensure the bot has `VIEW_CHANNEL` and `READ_MESSAGE_HISTORY` permissions. For deleting other users' messages, `MANAGE_MESSAGES` is also required.
 
 ### 404 Not Found
 

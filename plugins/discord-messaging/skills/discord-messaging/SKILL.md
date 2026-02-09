@@ -46,6 +46,13 @@ scripts/messages.sh upload <channel_id> --content "Check this!" --file /path/to/
 scripts/messages.sh upload <channel_id> --content "Multiple files" --file /path/to/a.png --file /path/to/b.jpg
 ```
 
+## Delete Messages
+
+```bash
+# Delete a message
+scripts/messages.sh delete <channel_id> <message_id>
+```
+
 ## Add Reactions
 
 ```bash

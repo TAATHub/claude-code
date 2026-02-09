@@ -4,7 +4,7 @@ Discord REST API operations for messages, threads, and reactions.
 
 ## Features
 
-- **Messages**: Retrieve messages (with limit, date filtering, attachment extraction), send text/images
+- **Messages**: Retrieve messages (with limit, date filtering, attachment extraction), send text/images, delete messages
 - **Threads**: List active/archived threads, get thread messages
 - **Reactions**: Add/remove emoji reactions (Unicode and custom)
 
@@ -26,7 +26,7 @@ Discord REST API operations for messages, threads, and reactions.
 - `READ_MESSAGE_HISTORY` - Read message history
 - `SEND_MESSAGES` - Send messages (if sending)
 - `ADD_REACTIONS` - Add reactions (if using reactions)
-- `MANAGE_MESSAGES` - Remove others' reactions (optional)
+- `MANAGE_MESSAGES` - Remove others' reactions, delete others' messages (optional)
 
 ## Quick Start
 
@@ -41,6 +41,9 @@ Get messages from Discord channel (ID: 123456789) on January 15, 2024
 
 # Send message
 Send "Hello, Discord!" to Discord channel (ID: 123456789)
+
+# Delete message
+Delete Discord message (Channel ID: 123456789, Message ID: 987654321)
 
 # Add reaction
 Add ✅ reaction to Discord message (Channel ID: 123456789, Message ID: 987654321)
