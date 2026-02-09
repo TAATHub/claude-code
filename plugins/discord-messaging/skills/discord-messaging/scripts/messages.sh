@@ -7,6 +7,7 @@ set -euo pipefail
 #   ./messages.sh send <channel_id> <content>
 #   ./messages.sh send <channel_id> --json '{"content": "text"}'
 #   ./messages.sh upload <channel_id> [--content <text>] --file <path> [--file <path>...]
+#   ./messages.sh delete <channel_id> <message_id>
 
 show_usage() {
     cat << 'EOF'
@@ -16,6 +17,7 @@ Subcommands:
   get      Get messages from a channel
   send     Send a text message
   upload   Send a message with file attachments
+  delete   Delete a message
 
 get <channel_id> [options]
   --limit <n>     Number of messages (1-100, default: 50)
@@ -32,12 +34,17 @@ upload <channel_id> [options]
   --content <text>   Optional message text
   --file <path>      File to upload (can be specified multiple times)
 
+delete <channel_id> <message_id>
+  Delete a message from the channel
+  Requires MANAGE_MESSAGES permission for other users' messages
+
 Examples:
   messages.sh get 123456789 --limit 20
   messages.sh get 123456789 --after 987654321
   messages.sh send 123456789 "Hello, World!"
   messages.sh send 123456789 --json '{"content": "Line1\nLine2"}'
   messages.sh upload 123456789 --content "Check this!" --file /path/to/image.png
+  messages.sh delete 123456789 987654321
 EOF
 }
 
@@ -271,6 +278,22 @@ upload_command() {
     curl "${curl_args[@]}"
 }
 
+# --- delete command ---
+delete_command() {
+    if [ $# -lt 2 ]; then
+        echo "ERROR: channel_id and message_id are required." >&2
+        exit 1
+    fi
+    local channel_id="$1"
+    local message_id="$2"
+    validate_snowflake_id "$channel_id" "channel_id"
+    validate_snowflake_id "$message_id" "message_id"
+
+    curl -s -X DELETE "https://discord.com/api/v10/channels/${channel_id}/messages/${message_id}" \
+        -H "Authorization: Bot $DISCORD_BOT_TOKEN" \
+        -H "User-Agent: DiscordBot (https://discord.com, 1.0)"
+}
+
 # Execute subcommand
 case "$SUBCOMMAND" in
     get)
@@ -281,6 +304,9 @@ case "$SUBCOMMAND" in
         ;;
     upload)
         upload_command "$@"
+        ;;
+    delete)
+        delete_command "$@"
         ;;
     *)
         echo "ERROR: Unknown subcommand: $SUBCOMMAND" >&2
