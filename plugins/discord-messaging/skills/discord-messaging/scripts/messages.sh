@@ -170,15 +170,38 @@ get_command() {
         esac
     done
 
+    # Discord API: before, after, around are mutually exclusive (only one may be passed at a time)
+    # When both after and before are specified, use only after for the API call
+    # then filter results client-side with jq
+    local client_side_before=""
+    if [ -n "$after" ] && [ -n "$before" ]; then
+        client_side_before="$before"
+        before=""
+    fi
+
     # Build query string
     local query="limit=${limit}"
     [ -n "$before" ] && query="${query}&before=${before}"
     [ -n "$after" ] && query="${query}&after=${after}"
     [ -n "$around" ] && query="${query}&around=${around}"
 
-    curl -s "https://discord.com/api/v10/channels/${channel_id}/messages?${query}" \
+    local result
+    result=$(curl -s "https://discord.com/api/v10/channels/${channel_id}/messages?${query}" \
         -H "Authorization: Bot $DISCORD_BOT_TOKEN" \
-        -H "User-Agent: DiscordBot (https://discord.com, 1.0)"
+        -H "User-Agent: DiscordBot (https://discord.com, 1.0)")
+
+    # Client-side filtering when both after and before were specified
+    if [ -n "$client_side_before" ]; then
+        echo "$result" | jq --arg b "$client_side_before" \
+            '[.[] | select(
+                if (.id | length) != ($b | length)
+                then (.id | length) < ($b | length)
+                else .id < $b
+                end
+            )]'
+    else
+        echo "$result"
+    fi
 }
 
 # --- send command ---
