@@ -15,6 +15,14 @@
       "version": "1.1.1",
       "category": "communication",
       "tags": ["discord", "messaging", "api", "bot"]
+    },
+    {
+      "name": "xcode-dev",
+      "source": "./plugins/xcode-dev",
+      "description": "Xcode build and test skills with XcodeBuildMCP support and xcodebuild fallback",
+      "version": "1.0.0",
+      "category": "development",
+      "tags": ["xcode", "build", "test", "ios", "macos", "visionos"]
     }
   ]
 }
