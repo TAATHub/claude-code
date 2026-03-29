@@ -1,0 +1,13 @@
+{
+  "name": "xcode-dev",
+  "version": "1.0.0",
+  "description": "Xcode build and test skills using XcodeBuildMCP",
+  "author": {
+    "name": "TAAT"
+  },
+  "homepage": "https://github.com/taat/claude-code",
+  "repository": "https://github.com/taat/claude-code",
+  "license": "MIT",
+  "keywords": ["xcode", "build", "test", "ios", "macos", "visionos"],
+  "skills": "./skills/"
+}
