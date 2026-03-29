@@ -19,7 +19,7 @@ Run tests only for files changed in git diff.
 
 ### 1. Determine test targets
 
-If `all` is passed, skip step 1 and run all tests.
+If `all` is passed, skip this step and run all tests.
 
 Otherwise:
 
@@ -33,7 +33,11 @@ git diff HEAD --name-only
 
 ### 2. Run tests
 
-Use XcodeBuildMCP `test_sim`.
+If XcodeBuildMCP tools are available, use **Path A**. Otherwise, use **Path B**.
+
+---
+
+#### Path A: XcodeBuildMCP
 
 **All tests (`all`):**
 
@@ -44,4 +48,32 @@ Call `test_sim` with no arguments.
 Call `test_sim` with:
 
 - extraArgs: `["-only-testing:TestTarget/TestClassName1", "-only-testing:TestTarget/TestClassName2"]`
+- Determine the test target name from context. If unknown, inspect the project's test targets.
+
+---
+
+#### Path B: xcodebuild direct
+
+Load config from `xcodebuild-config.yml` and `xcodebuild-config.local.yml` (see xcode-build skill for details).
+
+**All tests (`all`):**
+
+```bash
+xcodebuild test \
+  -workspace ${workspace} \
+  -scheme ${scheme} \
+  -destination 'platform=${platform},id=${device_id}'
+```
+
+**Diff-based tests:**
+
+```bash
+xcodebuild test \
+  -workspace ${workspace} \
+  -scheme ${scheme} \
+  -destination 'platform=${platform},id=${device_id}' \
+  -only-testing:TestTarget/TestClassName1 \
+  -only-testing:TestTarget/TestClassName2
+```
+
 - Determine the test target name from context. If unknown, inspect the project's test targets.
