@@ -6,5 +6,5 @@
     "type": "command",
     "command": "~/.claude/statusline.py"
   },
-  "language": "Japanese",
+  "language": "Japanese"
 }
