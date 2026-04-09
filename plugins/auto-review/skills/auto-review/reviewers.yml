@@ -1,0 +1,21 @@
+# レビュアー設定
+# 呼び出すサブエージェントを定義します。
+# agents/ ディレクトリに各レビュアーの詳細定義を配置してください。
+# レビュアーを追加・削除することで、レビューの観点を自由にカスタマイズできます。
+
+reviewers:
+  - name: general-reviewer
+    role: 品質・セキュリティ・パフォーマンスを多角的にレビュー
+    agent: agents/general-reviewer.md
+
+  - name: architecture-reviewer
+    role: アーキテクチャ設計の観点から俯瞰的にレビュー
+    agent: agents/architecture-reviewer.md
+
+  - name: codex-reviewer
+    role: Codex CLIによる別モデル視点レビュアー
+    agent: agents/codex-reviewer.md
+
+  - name: simplify-reviewer
+    role: 可読性・一貫性・保守性レビュアー
+    agent: agents/simplify-reviewer.md

@@ -1,0 +1,13 @@
+{
+  "name": "auto-review",
+  "version": "1.0.0",
+  "description": "Parallel self-review with critical evaluation and auto-fix",
+  "author": {
+    "name": "TAAT"
+  },
+  "homepage": "https://github.com/TAATHub/claude-code",
+  "repository": "https://github.com/TAATHub/claude-code",
+  "license": "MIT",
+  "keywords": ["review", "code-review", "self-review", "quality"],
+  "skills": "./skills/"
+}
