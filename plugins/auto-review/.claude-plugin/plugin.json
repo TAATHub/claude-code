@@ -1,5 +1,5 @@
 {
-  "name": "review",
+  "name": "auto-review",
   "version": "1.0.0",
   "description": "Parallel self-review with critical evaluation and auto-fix",
   "author": {
