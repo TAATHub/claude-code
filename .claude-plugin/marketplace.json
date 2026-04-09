@@ -23,6 +23,14 @@
       "version": "1.0.0",
       "category": "development",
       "tags": ["xcode", "build", "test", "ios", "macos", "visionos"]
+    },
+    {
+      "name": "review",
+      "source": "./plugins/review",
+      "description": "Parallel self-review with critical evaluation and auto-fix",
+      "version": "1.0.0",
+      "category": "development",
+      "tags": ["review", "code-review", "self-review", "quality"]
     }
   ]
 }
