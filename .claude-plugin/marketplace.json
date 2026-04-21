@@ -28,7 +28,7 @@
       "name": "auto-review",
       "source": "./plugins/auto-review",
       "description": "Parallel self-review with critical evaluation and auto-fix",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "category": "development",
       "tags": ["review", "code-review", "self-review", "quality"]
     }
