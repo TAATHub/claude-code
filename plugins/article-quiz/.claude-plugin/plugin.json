@@ -1,0 +1,13 @@
+{
+  "name": "article-quiz",
+  "version": "1.0.0",
+  "description": "Generate and grade comprehension quizzes from article URLs",
+  "author": {
+    "name": "TAAT"
+  },
+  "homepage": "https://github.com/TAATHub/claude-code",
+  "repository": "https://github.com/TAATHub/claude-code",
+  "license": "MIT",
+  "keywords": ["quiz", "article", "learning", "comprehension"],
+  "skills": "./skills/"
+}
