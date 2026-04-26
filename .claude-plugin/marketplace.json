@@ -31,6 +31,14 @@
       "version": "1.1.0",
       "category": "development",
       "tags": ["review", "code-review", "self-review", "quality"]
+    },
+    {
+      "name": "article-quiz",
+      "source": "./plugins/article-quiz",
+      "description": "Generate and grade comprehension quizzes from article URLs",
+      "version": "1.0.0",
+      "category": "productivity",
+      "tags": ["quiz", "article", "learning", "comprehension"]
     }
   ]
 }
