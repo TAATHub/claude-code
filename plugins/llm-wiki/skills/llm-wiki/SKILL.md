@@ -64,8 +64,12 @@ LLM が操作を始める前に `LLM_WIKI_VAULT_ROOT` を解決する手順:
 │   ├── log.md              # ジャンル内操作ログ（追記専用）
 │   ├── _overview.md        # ジャンル概要・知識マップ
 │   └── <ページ名>.md
-└── sources/<genre>/        # ソース要約のみ（原本は別所在）
+└── sources/
+    ├── _inbox/             # 未分類ソースの一時置き場（Web Clipper 等の受け皿）
+    └── <genre>/            # ジャンル確定済みソース要約（原本は別所在）
 ```
+
+`_` プレフィックスの `_inbox/` はジャンルディレクトリのスキャン（`sources/<genre>/`）から除外され、`ingest` 実行時に triage（ジャンル振り分け）の対象として別扱いされる。
 
 ## 動詞ディスパッチ
 
@@ -88,6 +92,12 @@ LLM が操作を始める前に `LLM_WIKI_VAULT_ROOT` を解決する手順:
 - `type` フィールドなし、または他の値 → 未取り込み（`ingest` で処理）
 
 Web Clipper 出力（`tags: ["clippings"]` のみで `type` 未指定）、手動作成ノート、URL ingest の Phase A 直後の生ファイルはすべて「未取り込み」として扱われる。詳細は [references/conventions.md](references/conventions.md) の「`type: source-summary` はコンパイル完了マーカー」セクション。
+
+### `sources/_inbox/` 配下のファイル
+
+ジャンルが未確定のまま投入された未分類ソース置き場。`ingest` 実行時にまず triage フェーズで既存ジャンルへの振り分けを行ってから通常の Phase B に乗せる。詳細は [references/ingest.md](references/ingest.md) の「Phase A-0: Inbox triage」セクション。
+
+Web Clipper の保存先をここに向ける運用を推奨。手動メモや別箇所からの取り込みもここを起点にすると、ジャンル判断を ingest 時に集約できる。
 
 ## 共通ルール
 

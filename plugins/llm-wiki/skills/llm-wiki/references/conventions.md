@@ -70,18 +70,23 @@ source-summary の `source_kind` フィールドに使う値:
 
 #### 未取り込みファイルが取りうる形
 
+- **`sources/_inbox/` 配下のファイル**: ジャンル未確定で投入されたソース（Web Clipper 出力、手動メモ、別箇所からの取り込み）。`ingest` の triage フェーズでジャンル振り分けされてから処理される
 - **Web Clipper 出力**: `tags: ["clippings"]` だけがあり、`type` フィールドなし
-- **手動作成ノート**: ユーザーが `sources/<genre>/` に直接置いたメモ。frontmatter なし、または `type` 未指定
+- **手動作成ノート**: ユーザーが `sources/_inbox/` または `sources/<genre>/` に直接置いたメモ。frontmatter なし、または `type` 未指定
 - **URL ingest の Phase A 直後**: WebFetch で取得した生コンテンツが保存され、`type` 未設定
 - **Phase B が途中で失敗**: 部分的な書き換えがあっても `type` が立っていなければ未完了扱い
 
 #### 手動でメモを作る際の注意
 
-`sources/<genre>/` に手書きノートを置いて Wiki に流したい場合:
+ジャンルが未確定 / 迷う場合は `sources/_inbox/` に置く。ジャンルが確定しているなら `sources/<genre>/` に直接置いてもよい。いずれの場合も:
 
 - frontmatter の `type` を **書かない**（推奨）。次の `/llm-wiki ingest` で自動的に処理される
 - `type: source-summary` を最初から書くと未取り込み判定がスキップされてしまう
 - 既に `type: source-summary` 済みのファイルを再評価したい場合は `/llm-wiki recompile <パス>` を使う
+
+#### Web Clipper の保存先
+
+Obsidian Web Clipper の保存先を `sources/_inbox/` に向ける運用を推奨。Clipping 時にジャンルを判断する必要がなく、ingest 実行時にまとめて triage できる。既に `Clippings/` 等別フォルダで運用している場合は、ingest 前に手動で `_inbox` に移すか、保存先を切り替える。
 
 ### 日付
 
