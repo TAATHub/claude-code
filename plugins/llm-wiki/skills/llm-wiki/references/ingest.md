@@ -44,7 +44,7 @@ Glob ツールに `$WIKI_ROOT/sources/_inbox/*.md` パターンを渡して候�
 
 | frontmatter | 扱い |
 |---|---|
-| `type: source-summary` あり | **異常状態**。警告ログを出して `_inbox` に残置（triage 対象から除外）。完了レポートの「要レビュー事項」に列挙する |
+| `type: source-summary` あり | **異常状態**。警告ログを出して `_inbox` に残置（triage 対象から除外）。完了レポートの「要レビュー事項」に列挙し、「該当 genre が `wiki/<genre>/` に存在するなら手動で `sources/<genre>/` に移動して `recompile` する」「存在しないなら `type` フィールドを除去して再 ingest する」のリカバリ案内を併記する |
 | `genre: <値>` あり、かつ `wiki/<値>/` ディレクトリが存在 | **fast path**。**A-0-2 と A-0-3 をともにバイパス** して A-0-4 のファイル移動へ直行する。frontmatter の `genre` 値が triage 結果として確定する |
 | `genre: <値>` あり、かつ `wiki/<値>/` が存在しない（typo / 未 init） | 通常の triage 対象に戻す（A-0-2 で再判定。提案ジャンルとして frontmatter の値も候補に含めて提示） |
 | 上記以外（frontmatter なし / `genre` フィールドなし） | 通常の triage 対象（A-0-2 へ） |
@@ -70,7 +70,7 @@ Glob ツールに `$WIKI_ROOT/sources/_inbox/*.md` パターンを渡して候�
 #### 確認画面の発火条件
 
 - **全件「高」確信のみ**: 確認画面を **スキップ** して A-0-4 へ直行（完了レポートで結果を報告）
-- **「中」以上が 1 件でも含まれる**: 確認画面を出す
+- **確信度が「高」でないもの（中 または 低）が 1 件でも含まれる**: 確認画面を出す
 
 #### 一括確認モード (`AskUserQuestion`)
 
@@ -91,10 +91,12 @@ Glob ツールに `$WIKI_ROOT/sources/_inbox/*.md` パターンを渡して候�
 - 全件提案通り承認 → A-0-4 へ
 - 個別調整モードへ → 下記の per-item 確認へ
 - 中断（`_inbox` に残置）→ 呼び出しモードに応じて分岐:
-  - 引数なしモード（`/llm-wiki ingest`）: A-0 を抜けて、`genre_targets` の Phase B 処理（A-1 はスキップ）に進む
+  - 引数なしモード（`/llm-wiki ingest`）: A-0 を抜けて A-0-5 の合流ルール（`genre_targets` を Phase B-1 から処理、A-1〜A-4 はスキップ）に進む
   - 単一ファイル指定モード（`/llm-wiki ingest sources/_inbox/<file>`）: ingest 全体を終了
 
 新ジャンル候補は **スラッグ（小文字英数+ハイフン）と対応する日本語名** をペアで提示する（例: `data-science` (データサイエンス)）。
+
+triage 対象が **1 件のみ**の場合、表形式の一括確認は冗長になるため、一括確認モードを省略して直接「個別調整モード」相当の per-item 確認に縮約してよい（既存ジャンル選択 / 新ジャンル候補から選ぶ / カスタム入力 / スキップ）。
 
 #### 個別調整モード（一括確認モードで「個別調整モードへ」を選んだ場合のみ）
 
@@ -116,7 +118,7 @@ A-0-1 fast path で確定したファイル、および A-0-3 で「全件承認
    - 同じ新ジャンルが triage 中に複数件で必要な場合、最初の 1 件で `init` を呼び、2 件目以降は既存判定（`wiki/<genre>/` が存在）でスキップする
    - `init` の完了レポートは独立に出さず、ingest 全体の完了レポートに統合する
 
-2. **slug 正規化**: inbox の元ファイル名（拡張子除去前）から `<slug>` を作る（拡張子除去後）。詳細は [conventions.md](conventions.md) の「ファイル名と title」セクションを正典とし、最低限の追加規則として:
+2. **slug 正規化**: inbox の元ファイル名から拡張子を除いた文字列を `<slug>` のベースとする。詳細は [conventions.md](conventions.md) の「ファイル名と title」セクションを正典とし、最低限の追加規則として:
    - スペースは取り除く（複合語として連結）か中黒「・」で区切る
    - `/`, `\`, `:`, `?`, `*`, `"`, `<`, `>`, `|` などの OS 予約文字は除去
    - 過度に長いタイトル（コードポイント長 50 程度を目安）は意味の切れ目で切り詰める
@@ -125,7 +127,7 @@ A-0-1 fast path で確定したファイル、および A-0-3 で「全件承認
    - 初回衝突: 接尾辞 `<slug>-<today>.md`（例: `<slug>-2026-05-08.md`）
    - 同日内で再衝突: 連番 `<slug>-<today>-2.md`, `<slug>-<today>-3.md`...（`-2` から開始: 既存ファイル + `<today>` 接尾辞分の 2 ファイルが既にあるため）
 
-4. **ファイル移動**: `Bash` で `mv "$WIKI_ROOT/sources/_inbox/<original>" "$WIKI_ROOT/sources/<genre>/<slug>.md"` を実行（同一ファイルシステム内なら原子的）
+4. **ファイル移動**: `Bash` で `mv "$WIKI_ROOT/sources/_inbox/<original>" "$WIKI_ROOT/sources/<genre>/<final-slug>.md"` を実行（`<final-slug>` は step 3 の衝突回避を反映した最終ファイル名。同一ファイルシステム内なら原子的）
 
 5. **frontmatter 整備**: 移動後のファイルに対して:
 
@@ -133,9 +135,11 @@ A-0-1 fast path で確定したファイル、および A-0-3 で「全件承認
 
    | 既存の `genre` フィールド | Edit 操作 |
    |---|---|
-   | キーが存在しない | `---` の直後（`title:` 行の次など先頭付近）に `genre: <triage結果>` 行を挿入 |
+   | キーが存在しない | frontmatter ブロック先頭（`---` 直後）に `genre: <triage結果>` 行を挿入 |
    | 既存値が triage 結果と一致 | 何もしない |
    | 既存値が triage 結果と異なる | `genre: <旧値>` を `genre: <triage結果>` に置換 |
+
+   `title` フィールドが既存 frontmatter に欠けている場合（Web Clipper の `tags: ["clippings"]` のみの出力など）は、A-0-4 では補完しない。Phase B-4 の構造化要約書き換えで本文から抽出した正式タイトルを `title` として書き込むため、ここでは `genre` のみ整備すれば十分。
 
    **frontmatter なしの場合** — `Edit` で冒頭に YAML ブロックを新規挿入:
    ```yaml
@@ -342,6 +346,7 @@ tags:
 | WebFetch 失敗（URL ingest） | ファイル未作成 | 同じ URL で再実行 |
 | A-0 triage 中断（ユーザー [n] / 例外） | inbox ファイルはそのまま残置 | 引数なし `/llm-wiki ingest` で再 triage |
 | A-0-4 ファイル移動の途中失敗 | 一部ファイルは `sources/<genre>/` へ移動済み、残りは inbox に残る | 残り inbox ファイルは次回 triage、移動済みは genre_targets として通常 Phase B で拾われる |
+| A-0-4 step 4 (mv) 完了後・step 5 (frontmatter 整備) 失敗 | 移動済みだが `genre` フィールドが未追記の状態 | genre_targets として再検出され、Phase B-4 の frontmatter 全面書き換えで吸収される（B-4 のテンプレートが `genre` を必ず含むため復旧可） |
 | Phase A 途中失敗 | 部分ファイルが残るか未作成 | 引数なし `/llm-wiki ingest` で再検出される |
 | B-3 で Wiki ページ部分作成 | 部分ページあり、ソース `type` 未設定 | 引数なし再実行で B-1 から再走。既存ページは「更新」ルートで処理 |
 | B-4 で書き換え失敗 | ソースは生のまま、`type` 未設定 | 同上 |

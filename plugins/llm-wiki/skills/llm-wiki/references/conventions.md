@@ -70,11 +70,21 @@ source-summary の `source_kind` フィールドに使う値:
 
 #### 未取り込みファイルが取りうる形
 
-- **`sources/_inbox/` 配下のファイル**: ジャンル未確定で投入されたソース（Web Clipper 出力、手動メモ、別箇所からの取り込み）。`ingest` の triage フェーズでジャンル振り分けされてから処理される
+未取り込みファイルは「**投入経路（場所）**」と「**出自・状態**」の 2 軸で整理される。
+
+##### 投入経路（場所による分類）
+
+- **`sources/_inbox/` 配下**: ジャンル未確定。`ingest` の triage フェーズで既存ジャンルへ振り分けてから処理される
+- **`sources/<genre>/` 配下**: ジャンル確定済み。`ingest` で直接 Phase B に進む
+
+##### 出自・状態（frontmatter による分類）
+
 - **Web Clipper 出力**: `tags: ["clippings"]` だけがあり、`type` フィールドなし
-- **手動作成ノート**: ユーザーが `sources/_inbox/` または `sources/<genre>/` に直接置いたメモ。frontmatter なし、または `type` 未指定
+- **手動作成ノート**: ユーザーが直接置いたメモ。frontmatter なし、または `type` 未指定
 - **URL ingest の Phase A 直後**: WebFetch で取得した生コンテンツが保存され、`type` 未設定
 - **Phase B が途中で失敗**: 部分的な書き換えがあっても `type` が立っていなければ未完了扱い
+
+両軸は直交する（例: 「`_inbox` 配下の Web Clipper 出力」「`<genre>` 配下の手動メモ」など）。
 
 #### 手動でメモを作る際の注意
 
