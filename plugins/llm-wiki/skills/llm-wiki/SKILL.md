@@ -13,6 +13,7 @@ allowed-tools:
   - Bash(ls*)
   - Bash(mkdir*)
   - Bash(find*)
+  - Bash(mv*)
 ---
 
 # LLM Wiki
@@ -69,7 +70,7 @@ LLM が操作を始める前に `LLM_WIKI_VAULT_ROOT` を解決する手順:
     └── <genre>/            # ジャンル確定済みソース要約（原本は別所在）
 ```
 
-`_` プレフィックスの `_inbox/` はジャンルディレクトリのスキャン（`sources/<genre>/`）から除外され、`ingest` 実行時に triage（ジャンル振り分け）の対象として別扱いされる。
+`_inbox/` はジャンルディレクトリのスキャン（`sources/<genre>/`）から除外され、`ingest` 実行時に triage（ジャンル振り分け）の対象として別扱いされる。現時点で特別扱いするのは `_inbox/` のみ（将来 `_archive/` 等を追加する場合は仕様を追記する）。
 
 ## 動詞ディスパッチ
 

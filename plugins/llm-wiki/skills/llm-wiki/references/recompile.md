@@ -25,6 +25,8 @@
 
 実行前に対象ファイルを Read し、次を確認:
 
+- パスが `sources/_inbox/` 配下でないこと
+  - `_inbox` 配下が指定されたら「ジャンル未確定です。`/llm-wiki ingest <パス>` で triage してください」と案内して終了
 - `type: source-summary` が立っていること
   - 立っていなければ「未取り込みです。`/llm-wiki ingest <パス>` を使ってください」と案内して終了
 - `genre` フィールドが設定されていること

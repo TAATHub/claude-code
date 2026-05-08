@@ -6,15 +6,15 @@
 
 ## 検出方式
 
-未取り込み判定は **frontmatter の `type` フィールド** で行う。`log.md` の文字列 grep には依存しない。`sources/_inbox/` 配下はジャンル未確定として別扱いし、triage（Phase A-0）の対象とする。
+未取り込み判定は **frontmatter の `type` フィールド** で行う。`log.md` の文字列 grep には依存しない。`sources/_inbox/` 配下はジャンル未確定として別扱いし、triage（Phase A-0）の対象とする。スキャン構造は **直下 1 階層のみ**（`sources/<genre>/<file>.md`）を前提とし、ジャンルディレクトリ内のサブディレクトリは想定しない。
 
 ```python
 # 検出ロジック（疑似コード）
-inbox_targets = glob('sources/_inbox/*.md')          # 全件 triage 対象（type 不問）
+inbox_targets = glob('sources/_inbox/*.md')           # 全件 triage 対象（type 不問）
 genre_targets = []
-for fp in glob('sources/*/*.md'):
+for fp in glob('sources/*/*.md'):                      # 直下 1 階層のジャンルディレクトリを走査
     if fp.startswith('sources/_inbox/'):
-        continue                                      # inbox は inbox_targets で扱う
+        continue                                       # inbox は inbox_targets で扱う
     fm = parse_frontmatter(fp)
     if fm.get('type') != 'source-summary':
         # 未取り込み（Web Clipper 生 / 手動ノート / Phase B 失敗）
@@ -26,88 +26,124 @@ for fp in glob('sources/*/*.md'):
 
 | 呼び出し | 動作 |
 |---|---|
-| `/llm-wiki ingest` | `sources/_inbox/*.md` を triage（Phase A-0）→ `sources/<genre>/**/*.md` のうち `type: source-summary` でないものを順次処理 |
-| `/llm-wiki ingest <パス>` | パスが `sources/_inbox/` 配下なら単一 triage → 確定ジャンルへ移動 → Phase B。`sources/<genre>/` 配下なら通常 Phase B。それ以外（sources 外）なら従来通り（ジャンル判定 → コピー保存 → Phase B） |
-| `/llm-wiki ingest <URL>` | WebFetch → `sources/<genre>/<slug>.md` 保存（Phase A）→ そのまま Phase B へ。`source_url` 重複時はユーザー確認 |
+| `/llm-wiki ingest` | `sources/_inbox/*.md` を triage（Phase A-0）→ `sources/<genre>/*.md` のうち `type: source-summary` でないものを順次処理 |
+| `/llm-wiki ingest <パス>` | A-1 の入力解釈（4 ケース分岐）に従って処理。`_inbox` 配下なら単一 triage、ジャンル配下なら通常 Phase B、sources 外なら従来通り |
+| `/llm-wiki ingest <URL>` | WebFetch → ジャンル判定（A-3）→ `sources/<genre>/<slug>.md` 保存（Phase A）→ Phase B。**URL 経路は `_inbox` を経由しない**。`source_url` 重複時はユーザー確認 |
 
 `<パス>` には `.md`, `.txt`, `.pdf`, 画像など Read で読めるものを指定可。PDF は Read の `pages` パラメータで分割読込。
+
+> `_inbox` のスキャン対象は **`*.md` 1 階層のみ**。`.txt`/`.pdf`/画像/サブディレクトリ等を取り込みたい場合は `/llm-wiki ingest <パス>` で直接指定する（A-1 の「sources 外パス指定」ルートで処理される）。
 
 ## Phase A-0: Inbox triage
 
 `sources/_inbox/` 配下のジャンル未確定ファイルを既存ジャンルへ振り分ける段階。`/llm-wiki ingest`（引数なし）または `/llm-wiki ingest sources/_inbox/<file>` の場合に走る。inbox が空なら丸ごとスキップして A-1 に進む。
 
-### A-0-1. Triage 対象の収集
+### A-0-1. Triage 対象の収集と特殊ケース分類
 
-```bash
-Glob "$WIKI_ROOT/sources/_inbox/*.md"
-```
+Glob ツールに `$WIKI_ROOT/sources/_inbox/*.md` パターンを渡して候補を取得（直下 1 階層・`.md` のみ）。各ファイルを 1 件ずつ Read し、frontmatter で 4 通りに分類:
 
-該当ファイルを 1 件ずつ Read。以下の特殊ケースは triage から除外:
+| frontmatter | 扱い |
+|---|---|
+| `type: source-summary` あり | **異常状態**。警告ログを出して `_inbox` に残置（triage 対象から除外）。lint で別途検出可 |
+| `genre: <値>` あり、かつ `wiki/<値>/` ディレクトリが存在 | **fast path**。A-0-2 をスキップして A-0-4 のファイル移動へ直行 |
+| `genre: <値>` あり、かつ `wiki/<値>/` が存在しない（typo / 未 init） | 通常の triage 対象に戻す（A-0-2 で再判定。提案ジャンルとして frontmatter の値も候補に含めて提示） |
+| 上記以外（frontmatter なし / `genre` フィールドなし） | 通常の triage 対象（A-0-2 へ） |
 
-- frontmatter に既に `genre: <既存ジャンル>` あり → 信頼してそのまま `sources/<genre>/` へ移動（triage スキップ、A-0-4 へ直行）
-- frontmatter に `type: source-summary` あり → 異常状態として警告し処理しない（`_inbox` は未取り込みファイル専用のため）
+### A-0-2. ジャンル判定（段階化）
 
-### A-0-2. ジャンル判定
+通常の triage 対象に対し以下の手順で判定:
 
-各ファイルに対し:
+1. **第 1 段（軽量フィルタ）**: 既存ジャンル一覧を `Glob "$WIKI_ROOT/wiki/*/index.md"` で取得し、ジャンルスラッグと `index.md` 冒頭情報からマッチ候補を **上位 3 件以下** に絞る。ジャンル数が概ね 5 件以下なら第 1 段は省略してよい
+2. **第 2 段（詳細評価）**: 候補ジャンルの `_overview.md` のみ Read（特に「想定する読者・視点」「知識マップ」）。inbox ファイルの本文（タイトル・先頭数百行・主要キーワード）と突き合わせる
+3. **確信度を 3 段階で付与**:
 
-1. 既存ジャンル一覧 `Glob "$WIKI_ROOT/wiki/*/"` を取得
-2. 各ジャンルの `_overview.md`（特に「想定する読者・視点」「知識マップ」）を Read して判定材料に
-3. inbox ファイルの本文（タイトル・先頭数百行・主要キーワード）と突き合わせ
-4. **確信度を 3 段階で付与**:
-
-| 確信度 | 条件 | 既定挙動 |
+| 確信度 | 条件 | A-0-3 での挙動 |
 |---|---|---|
-| 高 | 単一既存ジャンルに明確にマッチ。他ジャンルとの境界も明確 | 自動振り分け（バッチ確認画面には載せるが「全件承認」で素通り） |
-| 中 | 単一ジャンルに概ねマッチするが他候補もあり / 複数候補に該当しうる | バッチ確認で要承認 |
-| 低 / 該当なし | 既存ジャンルどれにも収まらない | 新ジャンル候補を **1〜3 件** 提案、ユーザー選択 |
+| 高 | 単一既存ジャンルに明確にマッチ | 全件「高」なら確認画面を省略して直行（下記参照） |
+| 中 | 複数候補に該当しうる | 確認画面で要承認 |
+| 低 / 該当なし | 既存ジャンルどれにも収まらない | 新ジャンル候補を **1〜3 件** 提案、要承認 |
 
-各ファイルについて内部記録:
-- ファイルパス
-- 提案ジャンル（既存スラッグ または 新ジャンル候補リスト）
-- 確信度（高 / 中 / 低）
-- 判定根拠（一行）
+各ファイルについて内部記録: ファイルパス / 提案ジャンル（既存スラッグ または 新ジャンル候補リスト）/ 確信度 / 判定根拠（1 行）
 
 ### A-0-3. バッチ確認
 
-判定済み一覧を表形式でユーザーに提示し、`AskUserQuestion` で一括承認を取る。**確信度「中」以上が 1 件でもある場合は必ず確認画面を出す**。全件「高」確信のときも確認画面は出すが、既定動作は「全件承認」で素通り可能。
+#### 確認画面の発火条件
 
-提示フォーマット:
+- **全件「高」確信のみ**: 確認画面を **スキップ** して A-0-4 へ直行（完了レポートで結果を報告）
+- **「中」以上が 1 件でも含まれる**: 確認画面を出す
+
+#### 第 1 段: 一括承認 (`AskUserQuestion`)
+
+判定済み一覧を表形式でテキスト提示してから、`AskUserQuestion` で 3 択を尋ねる:
 
 ```
-未分類ソース X 件を検出（_inbox 内）:
+未分類ソース <件数> 件を検出（_inbox 内）:
 
 # | ファイル | 提案ジャンル | 確信度 | 備考
 1 | swift-async.md | swift | 高 | Swift Concurrency 解説
 2 | llm-bench.md | ai | 高 | LLM ベンチマーク議論
 3 | db-tuning.md | rdb | 中 | performance 系の新ジャンルもあり得る
 4 | ds-talk.md | (新規候補: data-science / ml / analytics) | 低 | 既存ジャンルに該当なし
-5 | misc.md | ?  | 低 | 主題不明 — スキップ推奨
-
-選択肢:
-[Y] 全件提案通り承認
-[n] 中断（_inbox に残置）
-[e <#> <ジャンル>] 個別変更（既存スラッグまたは新ジャンルスラッグを指定）
-[s <#>] その項目のみスキップ（_inbox に残置）
+5 | misc.md | (該当なし) | 低 | 主題不明 — スキップ推奨
 ```
 
-新ジャンル候補は **スラッグ（小文字英数+ハイフン）と対応する日本語名** をペアで提示する。例: `data-science` (データサイエンス)。ユーザーは候補から選ぶか、自分で別スラッグを指定できる。
+`AskUserQuestion` の選択肢:
+- 全件提案通り承認 → A-0-4 へ
+- 個別調整して進める → 第 2 段（per-item）へ
+- 中断（`_inbox` に残置）→ Phase A-0 を抜けて A-1 へ
+
+新ジャンル候補は **スラッグ（小文字英数+ハイフン）と対応する日本語名** をペアで提示する（例: `data-science` (データサイエンス)）。
+
+#### 第 2 段: 個別調整（第 1 段で「個別調整」を選んだ場合のみ）
+
+各ファイルについて順に `AskUserQuestion` で次の選択肢を提示:
+
+- 提案ジャンル（既存）をそのまま採用
+- 新ジャンル候補から 1 件選ぶ（提案がある場合）
+- 既存ジャンルから別スラッグを選ぶ
+- カスタム入力（別の新ジャンルスラッグを指定）
+- このファイルをスキップ（`_inbox` に残置）
+
+カスタム入力が選ばれたときは続けて `AskUserQuestion` で「ジャンルスラッグ（小文字英数+ハイフン）」と「ジャンル日本語名」を順次尋ねる。
 
 ### A-0-4. ファイル移動と新ジャンル作成
 
-承認された各ファイルについて以下を順に実行:
+第 1 段で「全件承認」または第 2 段で確定した各ファイルについて、1 ファイルずつ原子的に処理:
 
-1. **新ジャンルが必要な場合**: `init <genre>` を先に実行（[init.md](init.md) ケース 2 のフロー）して `wiki/<genre>/` と `sources/<genre>/` のスケルトンを作る
-2. **同名衝突チェック**: 移動先 `sources/<genre>/<slug>.md` が既に存在するなら接尾辞 `<slug>-<today>.md` で区別（A-2 と同じ重複処理規約）
-3. **ファイル移動**: inbox ファイルを Read → frontmatter に `genre: <genre>` を追加（既にあれば尊重）→ `sources/<genre>/<slug>.md` に Write → `_inbox` の元ファイルを削除
-   - 1 ファイルずつ原子的に処理する。複数ファイルを同時に動かして部分失敗で整合性を崩さない
-4. スキップ指定された項目は `_inbox` に残置（次回 ingest で再 triage の対象になる）
+1. **新ジャンルが必要な場合**: `init <genre>` を先に実行（[init.md](init.md) ケース 2 のフロー）して `wiki/<genre>/` と `sources/<genre>/` を生成。`init` の完了レポートは独立に出さず、ingest 全体の完了レポートに統合する
 
-移動完了後のファイルパス一覧を A-1 以降の処理対象として引き継ぐ。
+2. **slug 正規化**: inbox の元ファイル名から `<slug>` を作る（拡張子除去後）:
+   - スペースは取り除く（複合語として連結）か中黒「・」で区切る
+   - `/`, `\`, `:`, `?`, `*`, `"`, `<`, `>`, `|` などの OS 予約文字は除去
+   - 過度に長いタイトル（目安 50 文字超）は意味の切れ目で切り詰める
+   - 詳細は [conventions.md](conventions.md) の「ファイル名と title」セクションに従う
 
-### A-0-5. A-1 への合流
+3. **同名衝突チェック**: 移動先 `sources/<genre>/<slug>.md` が既に存在する場合:
+   - 第 1 段: 接尾辞 `<slug>-<today>.md`（例: `<slug>-2026-05-08.md`）
+   - 第 2 段（同日内で再衝突）: 連番 `<slug>-<today>-2.md`, `<slug>-<today>-3.md`...
 
-A-0 で振り分け済みのファイル群は、以降「既存パス指定（`sources/<genre>/...`配下）」相当として扱い、引数なし scan で集めた既存ジャンル配下の未取り込みファイルと合流して Phase B に進む。
+4. **ファイル移動**: `Bash` で `mv "$WIKI_ROOT/sources/_inbox/<original>" "$WIKI_ROOT/sources/<genre>/<slug>.md"` を実行（原子的）
+
+5. **frontmatter 整備**: 移動後のファイルに対して:
+   - **frontmatter あり**: `Edit` で `genre: <genre>` を追記（triage で確定したジャンルが正。既存値と不一致なら triage 結果で上書き）
+   - **frontmatter なし**: `Edit` で冒頭に YAML ブロックを新規挿入:
+     ```yaml
+     ---
+     title: "<元ファイル名から推定したタイトル>"
+     genre: <genre>
+     created: <today>
+     ---
+     ```
+     残りのフィールド（`type` / `source_url` / `source_kind` / `fetched_at` / `updated` 等）は Phase B-4 で構造化要約に置き換える際にまとめて整備する
+
+6. スキップ指定の項目は `_inbox` にそのまま残置（次回 ingest で再 triage の対象）
+
+### A-0-5. Phase B への合流とトランザクション境界
+
+- A-0-3 のバッチ確認は **全件分** が確定してから A-0-4 のファイル移動を開始する（per-file の確認と移動をインターリーブしない）
+- A-0-4 の **全件移動完了後** に Phase B を per-file 逐次で開始する（並列実行しない）
+
+A-0 で移動済みのファイル群は、A-1 の「既存パス指定（`sources/<genre>/...` 配下）」分岐に合流。A-2 〜 A-4 はスキップして直接 Phase B-1 から処理する。引数なし scan で集めた既存ジャンル配下の未取り込みファイルも同列に Phase B へ進む。
 
 ## Phase A: 収集の確定
 
