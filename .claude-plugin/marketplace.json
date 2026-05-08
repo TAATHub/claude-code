@@ -39,6 +39,14 @@
       "version": "1.0.0",
       "category": "productivity",
       "tags": ["quiz", "article", "learning", "comprehension"]
+    },
+    {
+      "name": "llm-wiki",
+      "source": "./plugins/llm-wiki",
+      "description": "Karpathy提唱のLLM WikiパターンをObsidian Vault上に構築・維持するナレッジベーススキル",
+      "version": "1.0.0",
+      "category": "productivity",
+      "tags": ["wiki", "knowledge-base", "obsidian", "second-brain", "llm-wiki"]
     }
   ]
 }
