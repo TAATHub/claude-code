@@ -10,18 +10,21 @@
 $WIKI_ROOT/
 ├── index.md           # 全体カタログ
 ├── wiki/              # 空ディレクトリ
-└── sources/           # 空ディレクトリ
+└── sources/
+    └── _inbox/        # 未分類ソースの一時置き場（Web Clipper 等の受け皿）
 ```
 
 ### ディレクトリ作成
 
-`$WIKI_ROOT` 自体および `wiki/` `sources/` を `mkdir -p` で作成する（既に存在しても安全）:
+`$WIKI_ROOT` 自体および `wiki/` `sources/` `sources/_inbox/` を `mkdir -p` で作成する（既に存在しても安全）:
 
 ```bash
-mkdir -p "$WIKI_ROOT/wiki" "$WIKI_ROOT/sources"
+mkdir -p "$WIKI_ROOT/wiki" "$WIKI_ROOT/sources/_inbox"
 ```
 
 `$LLM_WIKI_VAULT_ROOT` が存在しない場合（パス間違い・Vault 未作成）はエラーで停止し、ユーザーに Vault パスの確認を促す。
+
+`sources/_inbox/` はジャンル未確定のソースの一時置き場。`ingest` 実行時に triage フェーズで既存ジャンルへ振り分けられる。詳細は [ingest.md](ingest.md) の「Phase A-0: Inbox triage」セクション。
 
 ### `$WIKI_ROOT/index.md` テンプレート
 
@@ -46,7 +49,7 @@ updated: <today>
 
 ### 既に `_root` 初期化済みの場合
 
-`$WIKI_ROOT/index.md` が存在していたら何もせず「初期化済み」と報告して終了する。
+`$WIKI_ROOT/index.md` が存在していたら基本的に何もせず「初期化済み」と報告して終了する。ただし、後方互換のため `sources/_inbox/` ディレクトリが未作成なら `mkdir -p "$WIKI_ROOT/sources/_inbox"` だけは実行し、その旨を併記する（既存 vault のスキーマ追従用）。
 
 ## ケース2: `init <ジャンル>`（例: `init rdb`）
 
