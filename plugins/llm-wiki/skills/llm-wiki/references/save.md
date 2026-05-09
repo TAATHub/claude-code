@@ -150,9 +150,11 @@ updated: <today>
 
 ### Step 8: index 更新 → type 立て → log 追記（最終ステップ）
 
-ingest の B-6 と同じ順序を踏む:
+順序（index 更新 → type 立て → log 追記）を踏む。設計上の理由（冪等性確保のため type 立てを後段にする）は [ingest.md](ingest.md) の B-6 を参照。
 
-1. `wiki/<genre>/index.md` に新ページ追記、frontmatter `updated` を today に
+1. `wiki/<genre>/index.md` の「ページ一覧」（または該当カテゴリ判断不能なら「## 未分類」）に新規ページを追記、frontmatter `updated` を today に
+   - 追記フォーマット・カテゴリ振り分け・「## 未分類」の扱いは [conventions.md](conventions.md) の「ジャンル index (`index.md`)」セクションが正典
+   - サマリは Step 1 の要点抽出から生成する
 2. Step 5 で作成した source-summary の frontmatter に `type: source-summary` を追加（save の完了印）
 3. `wiki/<genre>/log.md` に追記:
 

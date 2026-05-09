@@ -317,9 +317,10 @@ tags:
 
 順序が重要:
 
-1. `$WIKI_ROOT/wiki/<genre>/index.md` の「ページ一覧」に新規ページを追記、frontmatter `updated` を today に
-   - 既存カテゴリに収まる場合はそのカテゴリ末尾に
-   - 新カテゴリが必要な場合は適切な位置に新セクション追加（B-5 で `_overview.md` を更新したならそれと整合させる）
+1. `$WIKI_ROOT/wiki/<genre>/index.md` の「ページ一覧」（または該当カテゴリ判断不能なら「## 未分類」）に新規ページを追記、frontmatter `updated` を today に
+   - 追記フォーマット・カテゴリ振り分けルール・「## 未分類」の扱いは [conventions.md](conventions.md) の「ジャンル index (`index.md`)」セクションが正典
+   - サマリは B-2 の要点抽出から生成する
+   - 新カテゴリを追加する場合、B-5 で `_overview.md` を更新したならそれと整合させる
 2. ソース source-summary の frontmatter に `type: source-summary` を追加（B-4 で書き換えた本文は既にこの形式に整っており、`type` の 1 行を追加するだけ）
 3. `$WIKI_ROOT/wiki/<genre>/log.md` に追記:
 
