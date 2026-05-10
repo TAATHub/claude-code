@@ -111,6 +111,18 @@ Web Clipper の保存先をここに向ける運用を推奨。手動メモや�
 - 初回は `init _root` で `$WIKI_ROOT/` 直下の `index.md`、`wiki/`、`sources/` を生成する。
 - 各操作の最後に必ず `wiki/<genre>/log.md` に追記し、何をしたかを残す。
 
+## 検索の方針
+
+検索 (`query`) は **index ファースト + wikilink 辿り + Grep フォールバック** の順で行う。
+
+- まず root の `$WIKI_ROOT/index.md` を読み、関連ジャンルを特定する
+- 次に該当ジャンルの `_overview.md`（知識マップ・横断テーマ）と `index.md`（カタログ）を読み、候補ページを選定
+- 候補ページを Read し、必要に応じて wikilink を 2hop まで辿る
+- どれにも当たらないときのみ Grep にフォールバックする
+- embedding ベース RAG は使わない（外部依存・freshness・auditability の観点から）
+
+詳細な実行手順は [references/query.md](references/query.md) を参照。
+
 ## 安全側の方針
 
 - **自動コミットしない**: Vaultが Git管理下でも、git操作はユーザーが明示的に指示した場合のみ。
