@@ -1,6 +1,7 @@
 ---
 name: llm-wiki
 description: LLMが永続的なナレッジベース(LLM Wiki)を構築・維持するスキル。Obsidian Vault配下にソースドキュメントを取り込み、相互参照付きのノートとして整理する。「LLM Wiki」「Wikiに記録」「Wiki検索」「ingest」「save」「wiki query」「wiki lint」「wiki init」「wiki recompile」などのリクエストで使用。
+model: sonnet
 allowed-tools:
   - Read
   - Write
@@ -22,7 +23,7 @@ Andrej Karpathy が提唱する「LLM Wiki」を Obsidian Vault 上に構築・�
 
 ## Vault パス（要設定）
 
-このスキルは Obsidian Vault のルートパスを `LLM_WIKI_VAULT_ROOT` 環境変数で受け取る。**初回利用時にユーザー環境に合わせて設定**する。
+このスキルは Obsidian Vault のルートパスを環境変数で受け取る。**初回利用時にユーザー環境に合わせて設定**する。
 
 - `LLM_WIKI_VAULT_ROOT` — Obsidian Vault のルート絶対パス（例: `~/ObsidianVault`、`~/Documents/Obsidian/MyVault`、iCloud 同期 Vault など）
 - `WIKI_ROOT = $LLM_WIKI_VAULT_ROOT/llm-wiki` — references 内で多用する内部短縮形
@@ -46,13 +47,6 @@ Andrej Karpathy が提唱する「LLM Wiki」を Obsidian Vault 上に構築・�
 
 恒久的に設定していない場合は、初回操作時にスキルが `AskUserQuestion` で尋ねる（**そのセッション内のみ**保持。次セッションでも未設定なら再度尋ねる）。
 
-LLM が操作を始める前に `LLM_WIKI_VAULT_ROOT` を解決する手順:
-
-1. 環境変数 `LLM_WIKI_VAULT_ROOT` が設定されていればそれを使う
-2. 未設定なら、`AskUserQuestion` で「Obsidian Vault の絶対パスを教えてください」と確認
-3. 確認した値はセッション内で保持し、同セッション内では繰り返し尋ねない
-4. 同時に「次回以降のために `LLM_WIKI_VAULT_ROOT` を環境変数として設定することを推奨」する旨を 1 行案内する
-
 > Bash で扱うときは必ずダブルクォートで括る（パスにスペースを含む可能性があるため）。例: `ls "$WIKI_ROOT/wiki"`
 
 ## ディレクトリ構造
@@ -70,7 +64,7 @@ LLM が操作を始める前に `LLM_WIKI_VAULT_ROOT` を解決する手順:
     └── <genre>/            # ジャンル確定済みソース要約（原本は別所在）
 ```
 
-`_inbox/` はジャンルディレクトリのスキャン（`sources/<genre>/`）から除外され、`ingest` 実行時に triage（ジャンル振り分け）の対象として別扱いされる。現時点で特別扱いするのは `_inbox/` のみ（将来 `_archive/` 等を追加する場合は仕様を追記する）。
+`_inbox/` はジャンルディレクトリのスキャン（`sources/<genre>/`）から除外され、`ingest` 実行時に triage（ジャンル振り分け）の対象として別扱いされる。Web Clipper の保存先をここに向ける運用を推奨。現時点で特別扱いするのは `_inbox/` のみ（将来 `_archive/` 等を追加する場合は仕様を追記する）。
 
 ## 動詞ディスパッチ
 
@@ -87,28 +81,12 @@ LLM が操作を始める前に `LLM_WIKI_VAULT_ROOT` を解決する手順:
 
 ## 取り込み状態の判定
 
-`sources/<genre>/<file>.md` の取り込み状態は **frontmatter の `type` フィールド** で判定する。
-
-- `type: source-summary` あり → 取り込み済み（`ingest` の対象外、`recompile` で再処理可）
-- `type` フィールドなし、または他の値 → 未取り込み（`ingest` で処理）
-
-Web Clipper 出力（`tags: ["clippings"]` のみで `type` 未指定）、手動作成ノート、URL ingest の Phase A 直後の生ファイルはすべて「未取り込み」として扱われる。詳細は [references/conventions.md](references/conventions.md) の「`type: source-summary` はコンパイル完了マーカー」セクション。
-
-### `sources/_inbox/` 配下のファイル
-
-ジャンルが未確定のまま投入された未分類ソース置き場。`ingest` 実行時にまず triage フェーズで既存ジャンルへの振り分けを行ってから通常の Phase B に乗せる。詳細は [references/ingest.md](references/ingest.md) の「Phase A-0: Inbox triage」セクション。
-
-Web Clipper の保存先をここに向ける運用を推奨。手動メモや別箇所からの取り込みもここを起点にすると、ジャンル判断を ingest 時に集約できる。
+`sources/<genre>/<file>.md` の取り込み状態は **frontmatter の `type: source-summary` の有無** で判定する（`ingest` は未済を処理、`recompile` は済を再処理）。詳細は [references/conventions.md](references/conventions.md) の「`type: source-summary` はコンパイル完了マーカー」セクション。
 
 ## 共通ルール
 
 - **記述規約**（frontmatter / wikilink / 言語）: [references/conventions.md](references/conventions.md)
 - **判断基準**（ページ新規/更新/分割、query結果の保存可否）: [references/decision-rules.md](references/decision-rules.md)
-
-## 前提
-
-- Obsidian Vault 本体は既に存在する前提（`LLM_WIKI_VAULT_ROOT` で指す）。なければユーザーに作成を依頼する。
-- 初回は `init _root` で `$WIKI_ROOT/` 直下の `index.md`、`wiki/`、`sources/` を生成する。
 - 各操作の最後に必ず `wiki/<genre>/log.md` に追記し、何をしたかを残す。
 
 ## 検索の方針
