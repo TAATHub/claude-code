@@ -1,7 +1,6 @@
 ---
 name: llm-wiki
 description: LLMが永続的なナレッジベース(LLM Wiki)を構築・維持するスキル。Obsidian Vault配下にソースドキュメントを取り込み、相互参照付きのノートとして整理する。「LLM Wiki」「Wikiに記録」「Wiki検索」「ingest」「save」「wiki query」「wiki lint」「wiki init」「wiki recompile」などのリクエストで使用。
-model: sonnet
 allowed-tools:
   - Read
   - Write
