@@ -6,15 +6,13 @@
 
 ## 検出方式
 
-未取り込み判定は **frontmatter の `type` フィールド** で行う。`log.md` の文字列 grep には依存しない。`sources/_inbox/` 配下はジャンル未確定として別扱いし、triage（Phase A-0）の対象とする。スキャン構造は **直下 1 階層のみ**（`sources/<genre>/<file>.md`）を前提とし、ジャンルディレクトリ内のサブディレクトリは想定しない。
+未取り込み判定は **frontmatter の `type` フィールド** で行う。`log.md` の文字列 grep には依存しない。`inbox/` 配下はジャンル未確定として別扱いし、triage（Phase A-0）の対象とする。スキャン構造は **直下 1 階層のみ**（`sources/<genre>/<file>.md`）を前提とし、ジャンルディレクトリ内のサブディレクトリは想定しない。
 
 ```python
 # 検出ロジック（疑似コード）
-inbox_targets = glob('sources/_inbox/*.md')           # 全件 triage 対象（type 不問）
+inbox_targets = glob('inbox/*.md')                     # 全件 triage 対象（type 不問）
 genre_targets = []
 for fp in glob('sources/*/*.md'):                      # 直下 1 階層のジャンルディレクトリを走査
-    if fp.startswith('sources/_inbox/'):
-        continue                                       # inbox は inbox_targets で扱う
     fm = parse_frontmatter(fp)
     if fm.get('type') != 'source-summary':
         # 未取り込み（Web Clipper 生 / 手動ノート / Phase B 失敗）
@@ -26,25 +24,25 @@ for fp in glob('sources/*/*.md'):                      # 直下 1 階層のジ�
 
 | 呼び出し | 動作 |
 |---|---|
-| `/llm-wiki ingest` | `sources/_inbox/*.md` を triage（Phase A-0）→ `sources/<genre>/*.md` のうち `type: source-summary` でないものを順次処理 |
-| `/llm-wiki ingest <パス>` | A-1 の入力解釈に従って処理（4 ケース: `sources/<genre>/` 配下 / `sources/_inbox/` 配下 / sources 外パス / URL）|
-| `/llm-wiki ingest <URL>` | WebFetch → ジャンル判定（A-3）→ `sources/<genre>/<slug>.md` 保存（Phase A）→ Phase B。**URL 経路は `_inbox` を経由しない**。`source_url` 重複時はユーザー確認 |
+| `/llm-wiki ingest` | `inbox/*.md` を triage（Phase A-0）→ `sources/<genre>/*.md` のうち `type: source-summary` でないものを順次処理 |
+| `/llm-wiki ingest <パス>` | A-1 の入力解釈に従って処理（4 ケース: `sources/<genre>/` 配下 / `inbox/` 配下 / sources 外パス / URL）|
+| `/llm-wiki ingest <URL>` | WebFetch → ジャンル判定（A-3）→ `sources/<genre>/<slug>.md` 保存（Phase A）→ Phase B。**URL 経路は `inbox/` を経由しない**。`source_url` 重複時はユーザー確認 |
 
 `<パス>` には `.md`, `.txt`, `.pdf`, 画像など Read で読めるものを指定可。PDF は Read の `pages` パラメータで分割読込。
 
-> `_inbox` のスキャン対象は **`*.md` 1 階層のみ**。`.txt`/`.pdf`/画像/サブディレクトリ等を取り込みたい場合は `/llm-wiki ingest <パス>` で直接指定する（A-1 の「sources 外パス指定」ルートで処理される）。
+> `inbox/` のスキャン対象は **`*.md` 1 階層のみ**。`.txt`/`.pdf`/画像/サブディレクトリ等を取り込みたい場合は `/llm-wiki ingest <パス>` で直接指定する（A-1 の「sources 外パス指定」ルートで処理される）。
 
 ## Phase A-0: Inbox triage
 
-`sources/_inbox/` 配下のジャンル未確定ファイルを既存ジャンルへ振り分ける段階。`/llm-wiki ingest`（引数なし）または `/llm-wiki ingest sources/_inbox/<file>` の場合に走る。inbox が空なら丸ごとスキップして A-1 に進む。
+`inbox/` 配下のジャンル未確定ファイルを既存ジャンルへ振り分ける段階。`/llm-wiki ingest`（引数なし）または `/llm-wiki ingest inbox/<file>` の場合に走る。inbox が空なら丸ごとスキップして A-1 に進む。
 
 ### A-0-1. Triage 対象の収集と特殊ケース分類
 
-Glob ツールに `$WIKI_ROOT/sources/_inbox/*.md` パターンを渡して候補を取得（直下 1 階層・`.md` のみ）。各ファイルを 1 件ずつ Read し、frontmatter で 4 通りに分類:
+Glob ツールに `$WIKI_ROOT/inbox/*.md` パターンを渡して候補を取得（直下 1 階層・`.md` のみ）。各ファイルを 1 件ずつ Read し、frontmatter で 4 通りに分類:
 
 | frontmatter | 扱い |
 |---|---|
-| `type: source-summary` あり | **異常状態**。警告ログを出して `_inbox` に残置（triage 対象から除外）。完了レポートの「要レビュー事項」に列挙し、「該当 genre が `wiki/<genre>/` に存在するなら手動で `sources/<genre>/` に移動して `recompile` する」「存在しないなら `type` フィールドを除去して再 ingest する」のリカバリ案内を併記する |
+| `type: source-summary` あり | **異常状態**。警告ログを出して `inbox/` に残置（triage 対象から除外）。完了レポートの「要レビュー事項」に列挙し、「該当 genre が `wiki/<genre>/` に存在するなら手動で `sources/<genre>/` に移動して `recompile` する」「存在しないなら `type` フィールドを除去して再 ingest する」のリカバリ案内を併記する |
 | `genre: <値>` あり、かつ `wiki/<値>/` ディレクトリが存在 | **fast path**。**A-0-2（ジャンル判定）をバイパス** して A-0-4 のファイル移動へ直行する（A-0-3 の進捗ログには「fast path」として 1 行記録）。frontmatter の `genre` 値が採用ジャンルとして確定する |
 | `genre: <値>` あり、かつ `wiki/<値>/` が存在しない（typo / 未 init） | 通常の triage 対象に戻す（A-0-2 で再判定。frontmatter の値を新ジャンル候補スラッグの第 1 候補として優先採用） |
 | 上記以外（frontmatter なし / `genre` フィールドなし） | 通常の triage 対象（A-0-2 へ） |
@@ -74,7 +72,7 @@ Glob ツールに `$WIKI_ROOT/sources/_inbox/*.md` パターンを渡して候�
 A-0-2 で記録した採用ジャンルに従って A-0-4 へ直行する。`AskUserQuestion` 等のツールは一切呼ばず（例外なし）、判定済み一覧をメッセージ本文に表形式で書き出して即座に次へ進む:
 
 ```
-未分類ソース <件数> 件を自動振り分け（_inbox 内）:
+未分類ソース <件数> 件を自動振り分け（inbox 内）:
 
 # | ファイル | 採用ジャンル | 確信度 | 判定根拠
 1 | swift-async.md | swift | 高 | Swift Concurrency 解説、swift スラッグに直接マッチ
@@ -106,7 +104,7 @@ A-0-1 fast path で確定したファイル、および A-0-3 で自動振り分
    - 初回衝突: 接尾辞 `<slug>-<today>.md`（例: `<slug>-2026-05-08.md`）
    - 同日内で再衝突: 連番 `<slug>-<today>-2.md`, `<slug>-<today>-3.md`...（`-2` から開始: 既存ファイル + `<today>` 接尾辞分の 2 ファイルが既にあるため）
 
-4. **ファイル移動**: `Bash` で `mv` を実行（`<final-slug>` は step 3 の衝突回避を反映した最終ファイル名。同一ファイルシステム内なら原子的）。**`$WIKI_ROOT` は Bash に渡す前に実パスへ展開**してから `mv` の引数に組み立てる（例: `mv "/absolute/path/to/Vault/llm-wiki/sources/_inbox/<original>" "/absolute/path/to/Vault/llm-wiki/sources/<genre>/<final-slug>.md"`）。理由は [SKILL.md](../SKILL.md) の Vault パスの注記参照
+4. **ファイル移動**: `Bash` で `mv` を実行（`<final-slug>` は step 3 の衝突回避を反映した最終ファイル名。同一ファイルシステム内なら原子的）。**`$WIKI_ROOT` は Bash に渡す前に実パスへ展開**してから `mv` の引数に組み立てる（例: `mv "/absolute/path/to/Vault/llm-wiki/inbox/<original>" "/absolute/path/to/Vault/llm-wiki/sources/<genre>/<final-slug>.md"`）。理由は [SKILL.md](../SKILL.md) の Vault パスの注記参照
 
 5. **frontmatter 整備**: 移動後のファイルに対して:
 
@@ -146,7 +144,7 @@ A-0 で移動済みのファイル群は、A-1 の「既存パス指定（`sourc
 - **既存パス指定 (`sources/<genre>/...` 配下)**: ファイルが既にジャンルディレクトリ配下にある（Web Clipper 出力 / 手動ノート / 過去 Phase A 完了分 / A-0 で移動済み分）
   - ジャンルはディレクトリ名から確定
   - そのまま Phase B へ
-- **既存パス指定 (`sources/_inbox/` 配下)**: ジャンル未確定。Phase A-0（Inbox triage）の対象とする
+- **既存パス指定 (`inbox/` 配下)**: ジャンル未確定。Phase A-0（Inbox triage）の対象とする
 - **`sources/` 外のパス指定**: `Read` で内容取得 → ジャンル判定（A-3）→ `sources/<genre>/<slug>.md` にコピー保存（原本は触らない）
 - **URL 指定**: `WebFetch` で内容取得（取得日時を `fetched_at` として記録）→ ジャンル判定（A-3）→ `sources/<genre>/<slug>.md` に保存
 
@@ -357,7 +355,7 @@ Phase B が B-3 の途中で失敗したケースでは、新ページの一部�
 
 ### A-0 triage の追加項目（A-0 が走った場合のみ）
 
-- triage 対象件数（`_inbox` 内検出件数）
+- triage 対象件数（`inbox/` 内検出件数）
 - 振り分け結果の内訳: 既存ジャンルへ自動振り分け / 新ジャンル自動作成 + 移動 / fast path 直行 / 異常状態で残置（A-0-1 の `type: source-summary` 既設） / 処理中失敗で残置（A-0-2 判定中の Read エラー等）
 - 新規作成したジャンルのスラッグ一覧（init 経由）
 - **全ファイル**のジャンル判定根拠を 1 行ずつ列挙（`<ファイル名> → <採用ジャンル> [<確信度>]: <判定根拠>` 形式）。確信度に関わらず必ず全件記載し、後から人間が振り分けの妥当性を検証できるようにする
