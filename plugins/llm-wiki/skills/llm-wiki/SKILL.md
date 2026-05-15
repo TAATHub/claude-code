@@ -57,17 +57,16 @@ Andrej Karpathy が提唱する「LLM Wiki」を Obsidian Vault 上に構築・�
 ```
 <Vault>/llm-wiki/           # = $WIKI_ROOT
 ├── index.md                # 全体カタログ（ジャンル一覧）
+├── inbox/                  # 未分類ソースの一時置き場（Web Clipper 等の受け皿）
 ├── wiki/<genre>/
 │   ├── index.md            # ジャンル内ページカタログ
 │   ├── log.md              # ジャンル内操作ログ（追記専用）
 │   ├── _overview.md        # ジャンル概要・知識マップ
 │   └── <ページ名>.md
-└── sources/
-    ├── _inbox/             # 未分類ソースの一時置き場（Web Clipper 等の受け皿）
-    └── <genre>/            # ジャンル確定済みソース要約（原本は別所在）
+└── sources/<genre>/        # ジャンル確定済みソース要約（原本は別所在）
 ```
 
-`_inbox/` はジャンルディレクトリのスキャン（`sources/<genre>/`）から除外され、`ingest` 実行時に triage（ジャンル振り分け）の対象として別扱いされる。Web Clipper の保存先をここに向ける運用を推奨。現時点で特別扱いするのは `_inbox/` のみ（将来 `_archive/` 等を追加する場合は仕様を追記する）。
+`inbox/` は `sources/<genre>/` とは独立した最上位ディレクトリで、`ingest` 実行時に triage（ジャンル振り分け）の対象として別扱いされる。Web Clipper の保存先をここに向ける運用を推奨。
 
 ## 動詞ディスパッチ
 
