@@ -106,7 +106,7 @@ A-0-1 fast path で確定したファイル、および A-0-3 で自動振り分
    - 初回衝突: 接尾辞 `<slug>-<today>.md`（例: `<slug>-2026-05-08.md`）
    - 同日内で再衝突: 連番 `<slug>-<today>-2.md`, `<slug>-<today>-3.md`...（`-2` から開始: 既存ファイル + `<today>` 接尾辞分の 2 ファイルが既にあるため）
 
-4. **ファイル移動**: `Bash` で `mv "$WIKI_ROOT/sources/_inbox/<original>" "$WIKI_ROOT/sources/<genre>/<final-slug>.md"` を実行（`<final-slug>` は step 3 の衝突回避を反映した最終ファイル名。同一ファイルシステム内なら原子的）
+4. **ファイル移動**: `Bash` で `mv` を実行（`<final-slug>` は step 3 の衝突回避を反映した最終ファイル名。同一ファイルシステム内なら原子的）。**`$WIKI_ROOT` は Bash に渡す前に実パスへ展開**してから `mv` の引数に組み立てる（例: `mv "/absolute/path/to/Vault/llm-wiki/sources/_inbox/<original>" "/absolute/path/to/Vault/llm-wiki/sources/<genre>/<final-slug>.md"`）。理由は [SKILL.md](../SKILL.md) の Vault パスの注記参照
 
 5. **frontmatter 整備**: 移動後のファイルに対して:
 
