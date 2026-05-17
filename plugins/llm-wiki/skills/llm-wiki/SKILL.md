@@ -9,11 +9,11 @@ allowed-tools:
   - Grep
   - WebFetch
   - AskUserQuestion
-  - Bash(date*)
-  - Bash(ls*)
-  - Bash(mkdir*)
-  - Bash(find*)
-  - Bash(mv*)
+  - Bash(date:*)
+  - Bash(ls:*)
+  - Bash(mkdir:*)
+  - Bash(find:*)
+  - Bash(mv:*)
 ---
 
 # LLM Wiki
@@ -45,12 +45,6 @@ Andrej Karpathy が提唱する「LLM Wiki」を Obsidian Vault 上に構築・�
    `~/.claude/settings.json`（ユーザー全体）、プロジェクト内 `.claude/settings.json`（コミット対象）、`.claude/settings.local.json`（個人ローカル）のいずれでも可。Claude Code 起動時に自動で環境変数として注入される。
 
 恒久的に設定していない場合は、初回操作時にスキルが `AskUserQuestion` で尋ねる（**そのセッション内のみ**保持。次セッションでも未設定なら再度尋ねる）。
-
-> **Bash で `$WIKI_ROOT` / `$LLM_WIKI_VAULT_ROOT` を展開しない**: Claude Code の `simple_expansion` セーフティチェックにより、変数展開を含む Bash は `Bash(cmd:*)` の allow パターンに関係なく毎回手動承認を求められる。回避するには:
-> - **ファイル一覧・パターン取得**: Bash の `ls` ではなく **Glob ツール** を使う（変数展開不要・`~` 可）。本仕様でも参照例は `Glob "$WIKI_ROOT/wiki/*/index.md"` のように記載しているが、これは「概念上のパス記法」であって Bash に投げる文字列ではない。Glob ツール呼び出し時には `$WIKI_ROOT` を実パスへ事前展開する
-> - **本文検索**: Bash の `grep` ではなく **Grep ツール** を使う
-> - **ディレクトリ作成・ファイル移動**: `mkdir` / `mv` の Bash 呼び出しが必要な場合は、`$WIKI_ROOT` を**呼び出し直前に実パスへ展開**してから渡す（`mkdir -p "$WIKI_ROOT/..."` ではなく `mkdir -p "/absolute/path/to/Vault/llm-wiki/..."` を実行）
-> - **debug 用 `echo $VAR` 禁止**: 変数の値を確認するためだけの `echo` 呼び出しは行わない
 
 ## ディレクトリ構造
 

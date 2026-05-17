@@ -18,14 +18,8 @@ $WIKI_ROOT/
 
 `$WIKI_ROOT` 自体および `wiki/` `sources/` `inbox/` を `mkdir -p` で作成する（既に存在しても安全）。
 
-**Bash 呼び出し時は `$WIKI_ROOT` を実パスへ展開してから渡す**（`simple_expansion` セーフティ回避、[SKILL.md](../SKILL.md) の注記参照）:
-
 ```bash
-# 概念的な記述（実際にはこの形では実行しない）
 mkdir -p "$WIKI_ROOT/wiki" "$WIKI_ROOT/sources" "$WIKI_ROOT/inbox"
-
-# 実際の Bash 呼び出しは実パスへ展開した形にする
-mkdir -p "/absolute/path/to/Vault/llm-wiki/wiki" "/absolute/path/to/Vault/llm-wiki/sources" "/absolute/path/to/Vault/llm-wiki/inbox"
 ```
 
 `$LLM_WIKI_VAULT_ROOT` が存在しない場合（パス間違い・Vault 未作成）はエラーで停止し、ユーザーに Vault パスの確認を促す。
@@ -57,7 +51,7 @@ updated: <today>
 
 ### 既に `_root` 初期化済みの場合
 
-`$WIKI_ROOT/index.md` が存在していたら基本的に何もせず「初期化済み」と報告して終了する。ただし、後方互換のため `inbox/` ディレクトリが未作成なら `mkdir -p` で `inbox/` を作成し（`$WIKI_ROOT` は実パスへ展開してから Bash に渡す）、その旨を併記する（既存 vault のスキーマ追従用）。なお旧仕様の `sources/_inbox/` が残っている vault では、中身を `inbox/` へ移動してから旧ディレクトリを削除するよう案内する（自動移行はしない）。
+`$WIKI_ROOT/index.md` が存在していたら基本的に何もせず「初期化済み」と報告して終了する。ただし、後方互換のため `inbox/` ディレクトリが未作成なら `mkdir -p` で `inbox/` を作成し、その旨を併記する（既存 vault のスキーマ追従用）。なお旧仕様の `sources/_inbox/` が残っている vault では、中身を `inbox/` へ移動してから旧ディレクトリを削除するよう案内する（自動移行はしない）。
 
 ## ケース2: `init <ジャンル>`（例: `init rdb`）
 
