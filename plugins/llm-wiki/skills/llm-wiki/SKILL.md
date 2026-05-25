@@ -1,6 +1,6 @@
 ---
 name: llm-wiki
-description: LLMが永続的なナレッジベース(LLM Wiki)を構築・維持するスキル。Obsidian Vault配下にソースドキュメントを取り込み、相互参照付きのノートとして整理する。「LLM Wiki」「Wikiに記録」「Wiki検索」「ingest」「save」「wiki query」「wiki lint」「wiki init」「wiki recompile」などのリクエストで使用。
+description: LLMが永続的なナレッジベース(LLM Wiki)を構築・維持するスキル。Obsidian Vault配下にソースドキュメントを取り込み、相互参照付きのノートとして整理する。「LLM Wiki」「Wikiに記録」「Wiki検索」「ingest」「save」「wiki query」「wiki lint」「wiki init」「wiki recompile」「wiki curiosity」などのリクエストで使用。
 allowed-tools:
   - Read
   - Write
@@ -56,6 +56,8 @@ Andrej Karpathy が提唱する「LLM Wiki」を Obsidian Vault 上に構築・�
 │   ├── index.md            # ジャンル内ページカタログ
 │   ├── log.md              # ジャンル内操作ログ（追記専用）
 │   ├── _overview.md        # ジャンル概要・知識マップ
+│   ├── _proposals/         # curiosity/lint が生成する修正提案の隔離保存先
+│   │   └── applied/        # apply 済みアーカイブ
 │   └── <ページ名>.md
 └── sources/<genre>/        # ジャンル確定済みソース要約（原本は別所在）
 ```
@@ -73,7 +75,8 @@ Andrej Karpathy が提唱する「LLM Wiki」を Obsidian Vault 上に構築・�
 | `save [タイトル]` | 直前会話を `source_kind: conversation` として取り込み + コンパイル | [references/save.md](references/save.md) |
 | `recompile <パス>` | 取り込み済みソースの再コンパイル（メンテナンス用、引数必須） | [references/recompile.md](references/recompile.md) |
 | `query <質問>` | Wiki検索・統合回答・必要なら新ページ提案 | [references/query.md](references/query.md) |
-| `lint` | Vault健全性チェック（レポート出力のみ） | [references/lint.md](references/lint.md) |
+| `lint` | Vault健全性チェック + 修正案を proposals として書き出し | [references/lint.md](references/lint.md) |
+| `curiosity [--budget N]` | Wiki全体を能動的に点検し、自動生成質問の結果を proposals として書き出し | [references/curiosity.md](references/curiosity.md) |
 
 ## 取り込み状態の判定
 
@@ -83,7 +86,18 @@ Andrej Karpathy が提唱する「LLM Wiki」を Obsidian Vault 上に構築・�
 
 - **記述規約**（frontmatter / wikilink / 言語）: [references/conventions.md](references/conventions.md)
 - **判断基準**（ページ新規/更新/分割、query結果の保存可否）: [references/decision-rules.md](references/decision-rules.md)
+- **提案システム**（curiosity/lint の修正案隔離・対話的レビュー・apply セマンティクス）: [references/proposals.md](references/proposals.md)
 - 各操作の最後に必ず `wiki/<genre>/log.md` に追記し、何をしたかを残す。
+
+## 即時更新 vs 提案経由
+
+動詞は Wiki 本体への反映方法で 2 系統に分かれる:
+
+- **即時更新**: `ingest` / `save` / `recompile` — ユーザーが明示的に発火させた書き込み操作。即座に Wiki を更新する
+- **提案経由**: `curiosity` / `lint` — LLM 主導で検出・生成する操作。修正案を `_proposals/` に書き出し、対話的レビューを経て反映する
+- **読み取り**: `query` — Wiki を読むだけ。`log.md` への追記（curiosity の除外集合用）のみ書き込み発生
+
+詳細は [references/proposals.md](references/proposals.md) の「他動詞との関係」を参照。
 
 ## 検索の方針
 
