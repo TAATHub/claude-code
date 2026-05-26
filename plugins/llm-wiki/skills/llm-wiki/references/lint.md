@@ -1,14 +1,22 @@
 # lint — Vault 健全性チェック
 
-`lint` は Vault を読み取り、6 つの観点で問題候補を検出し、修正案を **proposals** として `_proposals/` に書き出す。修正の反映はユーザーの対話的レビューを経て行う。
+`lint` は Vault を読み取り、5 つの観点で問題候補を検出し、修正案を **proposals** として `_proposals/` に書き出す。観点 5 は内部的に 5a / 5b に分かれるため、lint 起点の kind は合計 6 種類（curiosity 起点 3 種類と合わせると全 9 種類。詳細は [proposals.md](proposals.md) の「kind 一覧」を参照）。修正の反映はユーザーの対話的レビューを経て行う。
 
 引数で対象を絞れる: `lint <genre>` でジャンル限定、引数なしで Vault 全体。
 
 ## 動作方針
 
-検出 → 修正案生成 → `_proposals/` に書き出し → 対話的レビュー、の 4 段で動作する。詳細は [proposals.md](proposals.md) を参照。
+pending リマインド → 検出 → 修正案生成 → `_proposals/` に書き出し → 対話的レビュー、の 5 段で動作する。詳細は [proposals.md](proposals.md) を参照。
 
 すべての検出項目を proposals 化する。検出ロジックが LLM 判断を含むもの・誤検知が多いものは `risk_flags` を付けてレビュー時にユーザーが判断できるようにする。
+
+## Phase 0: pending リマインド
+
+実行冒頭で各ジャンルの `_proposals/` をスキャンし、pending な提案が残っていればユーザーに案内する。プロンプト文言と挙動の正典は [proposals.md](proposals.md) の「pending リマインド」セクション。
+
+`yes` を選んだら [proposals.md](proposals.md) の対話的レビューフローを起動し、レビュー完了後に検出 (Phase 1) へ進むかユーザーに再確認する。
+
+検出対象には `_proposals/` 配下のファイルは含めない（pending 提案そのものを lint の検出対象にしないため）。各検出ロジックは `wiki/<genre>/*.md` を対象とし、`wiki/<genre>/_proposals/**` は走査対象外。
 
 ## チェック項目
 
@@ -125,9 +133,11 @@
 各検出項目で生成した proposals を `_proposals/` に書き出す:
 
 - 配置先: 対象ページが属するジャンルの `wiki/<genre>/_proposals/`
+- ディレクトリが未作成の場合は `mkdir -p` で lazy 作成する
 - ジャンル横断する場合: [proposals.md](proposals.md) の「ジャンル横断の主ジャンル自動選択」ロジックに従って主ジャンルを決定
 - ファイル命名: `<YYYY-MM-DD>__<kind>__lint-<serial>.md`
 - frontmatter / 本文構造は [proposals.md](proposals.md) の「frontmatter スキーマ」「本文テンプレート」に従う
+- 初期 frontmatter は必ず `status: pending`
 
 ## 完了レポート
 
@@ -169,7 +179,9 @@ proposals 書き出しの後、サマリレポートをコンソールに出力:
 2. 各提案を順に表示し、`apply` / `edit` / `skip` / `reject` / `quit` の選択
 3. 完了レポート
 
-`apply-all-safe` を選んだ場合、`risk_flags` 空の提案（主に 5a `link-fix`）が一括で反映される。これは過去の bulk-link 化作業（70〜80 ファイルへの一括リンク追記）を半自動化する効果を持つ。
+`apply-all-safe` を選んだ場合、`risk_flags` 空の提案（主に 5a `link-fix`）が一括で反映される。これは過去の bulk-link 化作業のような数十ファイル規模の一括リンク追記を半自動化する効果を持つ。
+
+大量件数 (10 件超) になる場合は [proposals.md](proposals.md) の「安全側のルール」に従い、5 件ごとに継続確認を挟む。
 
 ## 重要な制約
 
