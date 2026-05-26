@@ -21,7 +21,7 @@
 
 ## 実行フロー
 
-7 つの Phase で構成する。
+Phase 0（リマインド）+ Phase 1〜7（本処理）の計 8 段で構成する。
 
 ### Phase 0: pending リマインド
 
@@ -49,8 +49,11 @@
 
 - `Glob "$WIKI_ROOT/wiki/*/log.md"` で全ジャンルの log.md を取得
 - 各 log.md を Read し、`## YYYY-MM-DD` セクションのうち **直近 30 日** のものを対象に
-- エントリ中に登場する `[[ページ名]]` をすべて抽出 → 除外集合へ
-- 抽出対象のエントリ種別: `curiosity:` / `query:` / `ingest:` / `save:` / `recompile:`
+- 動詞ラインごとに以下のルールで `[[ページ名]]` を抽出 → 除外集合へ:
+  - `curiosity:` ライン: 動詞ライン上の `[[ページ名]]` をすべて抽出（点検対象として直接列挙されているため）
+  - `query:` ライン: 子箇条書き `- 参照: [[X]], [[Y]]` の `[[ページ名]]` を抽出
+  - `ingest:` / `save:` / `recompile:` ライン: 動詞ライン本体の `[[sources/...]]` は **対象ソースの参照なので除外**。子箇条書き（`- 新規:` / `- 更新:` / `- 分割:` / `- リンク修正:` など）に登場する Wiki ページ wikilink のみ抽出
+- `[[sources/...]]` 形式の参照（先頭が `sources/` で始まる wikilink）は除外集合に含めない（wiki ページの除外集合と名前空間が分離しているため）
 
 #### 候補ページの抽出
 
@@ -63,10 +66,12 @@
 
 サンプリングはジャンル横断で公平に行う:
 
-- ジャンル数 = `G`、budget = `N` のとき、各ジャンルから `ceil(N / G)` ページを抽出
-- 抽出は各ジャンル内で `updated` 古い順
-- 全ジャンル合算で `N` を超えたら、最古ジャンル順に切り捨てる
-- ジャンル内のページが枯渇したら（全ページが直近 30 日に触れられている）、そのジャンルは「1 周完了」として除外し、他ジャンルから補充
+- 各ジャンルの最古ページから 1 つずつ round-robin で取り、計 `budget` ページに達したら停止する
+- 各ジャンル内では `updated` 古い順
+- ジャンル内のページが枯渇したら（全ページが直近 30 日に触れられている）、そのジャンルは「1 周完了」として除外し、他ジャンルから補充して継続
+- ジャンル間でページ数の偏りがある場合は小さいジャンルが先に枯渇する。これは仕様として受け入れる（小ジャンル＝ニッチで点検価値が高いケースが多い）
+
+なお `updated` フィールドは **このソートの鍵としてのみ使用** する。「最近触れたか」の判定（除外集合）は前段の log.md ベースのロジックが担う。両者の役割を混同しない。
 
 #### 抽出結果の表示
 
@@ -124,7 +129,7 @@ Phase 1 完了:
 
 各質問を [query.md](query.md) の検索フローで自答する。ただし `curiosity` 内部からの呼び出しでは:
 
-- query の Phase 6（保存判断）と Phase 8（log.md 追記）は **行わない**
+- query の **ステップ 6**（保存判断）と **ステップ 8**（操作ログ追記）は **行わない**
 - 代わりに、答えと参照ページを Phase 4 の critic に渡す
 - query の Read 上限（8 ページ）は質問ごとに独立して適用
 
@@ -141,29 +146,27 @@ Phase 1 完了:
 
 | カテゴリ | 条件 | proposals 生成 |
 |---|---|---|
-| A. 新規ページ価値あり | 新切り口あり + sources/ 根拠あり + 既存と非重複 | `kind: new-page` |
-| B. 既存ページに追記すべき | 特定の既存ページの空白を埋める | `kind: append` |
-| C. 既存ページと矛盾発見 | 既存ページの主張と新情報が矛盾 | `kind: contradiction` |
-| D. 価値なし | 既存ページの繰り返し / 根拠薄弱 | proposals 作らず、log にだけ記録 |
+| A. 新規ページ価値あり | 新切り口あり + sources/ 根拠あり + 既存と非重複 | `new-page` |
+| B. 既存ページに追記すべき | 特定の既存ページの空白を埋める | `append` |
+| C. 既存ページと矛盾発見 | 既存ページの主張と新情報が矛盾 | `contradiction` |
+| D. 価値なし | 既存ページの繰り返し / 根拠薄弱 | proposals 作らず（log の集計件数の D カウントには含む）|
 
 ### Phase 5: proposals 書き出し
 
 A / B / C と判定されたものを [proposals.md](proposals.md) に従って `_proposals/` に書き出す:
 
 - 配置先: 対象ページが属するジャンルの `wiki/<genre>/_proposals/`
+- ディレクトリが未作成の場合は `mkdir -p` で lazy 作成する
 - ジャンル横断する場合: [proposals.md](proposals.md) の「ジャンル横断の主ジャンル自動選択」ロジックに従って主ジャンルを決定
 - ファイル命名: `<YYYY-MM-DD>__<kind>__curiosity-<serial>.md`
 - frontmatter / 本文構造は [proposals.md](proposals.md) の「frontmatter スキーマ」「本文テンプレート」に従う
+- 初期 frontmatter は必ず `status: pending`
 
-各 kind の典型的な risk_flags:
-
-| kind | risk_flags | confidence |
-|---|---|---|
-| `new-page` | `[hallucination-possible]` | medium |
-| `append` | `[hallucination-possible]` | medium |
-| `contradiction` | `[judgment-required]` | medium |
+curiosity 起点の `new-page` / `append` / `contradiction` の典型的な risk_flags と confidence は [proposals.md](proposals.md) の「kind 一覧」に記載。critic が標準ケースで判定すると confidence は medium 程度になる想定だが、新切り口の強さ・sources/ の充足度に応じて critic が high〜low の範囲で動的に決定する。
 
 `hallucination-possible` を付ける根拠: 答えに含まれる主張のうち sources/ に直接の記述がない部分（LLM 推論）が必ず含まれるため。critic がこの該否を判定し、提案ファイルの `## 信頼度・リスク` セクションに具体的な該当箇所を明記する。
+
+**実 proposals 数の目安**: 生成質問のうち critic 振り分けで A / B / C に該当するのは 30〜70% 程度（質問の質に依存）。`--budget 5` で生成質問 7〜8 問、最終 proposals は 2〜5 件程度を想定。
 
 ### Phase 6: log.md 追記
 
@@ -184,13 +187,11 @@ A / B / C と判定されたものを [proposals.md](proposals.md) に従って 
 
 ### Phase 7: 対話的レビュー
 
-Phase 5 で書き出した proposals に対して、[proposals.md](proposals.md) の「対話的レビューフロー」を起動する:
+Phase 5 で書き出した proposals に対して、[proposals.md](proposals.md) の「対話的レビューフロー」を起動する。フローの詳細（3 ステップの構成・選択肢・アイコン表示）は proposals.md を参照。
 
-1. `<N>件の提案が保存されました。今レビューしますか?` (yes / later / apply-all-safe)
-2. 各提案を順に表示し、`apply` / `edit` / `skip` / `reject` / `quit` の選択
-3. 完了レポート
+`later` を選んだ場合、次回 `curiosity` または `lint` 起動時の Phase 0 でリマインドされる。
 
-レビューで `later` を選んだ場合、次回 `curiosity` または `lint` 起動時の Phase 0 でリマインドされる。
+なお curiosity 起点の kind (`new-page` / `append` / `contradiction`) はいずれも `risk_flags` 付きのため、`apply-all-safe` (リスクなし提案のみ一括 apply) は curiosity サイクルでは通常空振りになる。リスクなし提案を含むのは主に lint の `link-fix`。`apply-all-safe` は両動詞で共通のメニューとして提供するが、実用上は lint で活躍する。
 
 ## 完了レポート
 
@@ -233,7 +234,7 @@ proposals 書き出し:
 ## 重要な制約
 
 - **proposals 経由のみ Wiki 反映**。curiosity が直接 Wiki 本体を書き換えることはない
-- **log.md 追記は全抽出ページに対して行う**（Approve 問わず）。これが除外集合の真実の置き場
+- **log.md 追記は全抽出ページに対して行う**（critic の振り分け結果 A/B/C/D およびユーザーレビューの apply/reject/skip 問わず）。これが除外集合の真実の置き場
 - **既存 Wiki ページの `updated` は触らない**。curiosity 自体は読み取り操作で、Wiki ページの `updated` は apply 時に proposals 経由で更新される
 - **質問生成は LLM の判断**。プロンプトに「単体・反証・横断」のバランスを指示し、特定の質問種別だけに偏らないようにする
 - **critic は同じ LLM でも別の指示で動かす**。「修正側」と「検証側」で観点を変えて、相関エラーを減らす
@@ -244,4 +245,4 @@ proposals 書き出し:
 - **月次**: 大規模 Vault (200 ページ以上) では月 1 回、`--budget 10` 程度
 - **手動**: 構造変更直後や、特定ジャンルを集中的に育てたいときに ad-hoc 実行
 
-`lint` と組み合わせる場合: lint で構造的健全性を検査、curiosity で内容的活性度を試験、と役割を分けて両方を回す運用が想定される。
+`lint` は構造的健全性 (リンク・矛盾・古さ) を、`curiosity` は内容的活性度 (Wiki が問いに耐えられる状態を保つ) を担う。両方を週次〜月次で回すと相補的に機能する。
