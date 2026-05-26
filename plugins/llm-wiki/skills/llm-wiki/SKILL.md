@@ -57,7 +57,8 @@ Andrej Karpathy が提唱する「LLM Wiki」を Obsidian Vault 上に構築・�
 │   ├── log.md              # ジャンル内操作ログ（追記専用）
 │   ├── _overview.md        # ジャンル概要・知識マップ
 │   ├── _proposals/         # curiosity/lint が生成する修正提案の隔離保存先
-│   │   └── applied/        # apply 済みアーカイブ
+│   │   ├── applied/        # apply 済みアーカイブ
+│   │   └── rejected/       # reject 済みアーカイブ
 │   └── <ページ名>.md
 └── sources/<genre>/        # ジャンル確定済みソース要約（原本は別所在）
 ```
@@ -76,7 +77,7 @@ Andrej Karpathy が提唱する「LLM Wiki」を Obsidian Vault 上に構築・�
 | `recompile <パス>` | 取り込み済みソースの再コンパイル（メンテナンス用、引数必須） | [references/recompile.md](references/recompile.md) |
 | `query <質問>` | Wiki検索・統合回答・必要なら新ページ提案 | [references/query.md](references/query.md) |
 | `lint` | Vault健全性チェック + 修正案を proposals として書き出し | [references/lint.md](references/lint.md) |
-| `curiosity [--budget N]` | Wiki全体を能動的に点検し、自動生成質問の結果を proposals として書き出し | [references/curiosity.md](references/curiosity.md) |
+| `curiosity [--budget N=5]` | Wiki全体を能動的に点検し、自動生成質問の結果を proposals として書き出し（N 省略時は 5 ページ） | [references/curiosity.md](references/curiosity.md) |
 
 ## 取り込み状態の判定
 
@@ -95,7 +96,7 @@ Andrej Karpathy が提唱する「LLM Wiki」を Obsidian Vault 上に構築・�
 
 - **即時更新**: `ingest` / `save` / `recompile` — ユーザーが明示的に発火させた書き込み操作。即座に Wiki を更新する
 - **提案経由**: `curiosity` / `lint` — LLM 主導で検出・生成する操作。修正案を `_proposals/` に書き出し、対話的レビューを経て反映する
-- **読み取り**: `query` — Wiki を読むだけ。`log.md` への追記（curiosity の除外集合用）のみ書き込み発生
+- **読み取り中心**: `query` — Wiki を読み合成回答を返す。例外的に「軽微な追記で済む」と判定した場合のみ対象ページに直接 Edit する分岐がある（[query.md](references/query.md) ステップ6）。`log.md` への追記は必ず発生し、curiosity の除外集合に貢献する
 
 詳細は [references/proposals.md](references/proposals.md) の「他動詞との関係」を参照。
 

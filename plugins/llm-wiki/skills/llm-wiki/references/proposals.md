@@ -16,11 +16,15 @@ Wiki 本体への書き込みを伴う変更を、リスクの大小にかかわ
 ```
 wiki/<genre>/_proposals/
 ├── <YYYY-MM-DD>__<kind>__<origin>-<serial>.md   # pending
-└── applied/                                      # apply 済みアーカイブ
+├── applied/                                      # apply 済みアーカイブ
+│   └── <YYYY-MM-DD>__<kind>__<origin>-<serial>.md
+└── rejected/                                     # reject 済みアーカイブ
     └── <YYYY-MM-DD>__<kind>__<origin>-<serial>.md
 ```
 
 `_proposals/` は対象ジャンルの配下に置く。ジャンル横断ページの提案は「主ジャンル」を自動判定して、その配下に配置する（後述）。
+
+`_proposals/` ディレクトリは **最初の書き込み時に lazy 作成** する（`mkdir -p`）。`init` で先に作る必要はない。`applied/` / `rejected/` も同様に必要時に作成する。
 
 ## ファイル命名規約
 
@@ -34,7 +38,7 @@ wiki/<genre>/_proposals/
 - `2026-05-25__link-fix__lint-042.md`
 - `2026-05-25__contradiction__curiosity-003.md`
 
-`<serial>` は同一日・同一 origin 内の通し番号。Wiki 全体（ジャンル跨ぎ）でユニークである必要はない。日付＋kind＋origin＋serial の 4 つでファイル単位の識別子として十分。
+`<serial>` は同一日・同一 origin 内の通し番号。採番ルール: 書き出し前に `Glob "$WIKI_ROOT/wiki/*/_proposals/**/*.md"` で **pending / applied / rejected すべて**を含む全 `_proposals/` 配下を走査し、同一日・同一 origin の最大 serial + 1 を採用する（applied / rejected も含むので、途中失敗時の再実行でも採番衝突しない）。Wiki 全体（ジャンル跨ぎ）でユニークである必要はない。日付＋kind＋origin＋serial の 4 つでファイル単位の識別子として十分。
 
 ## frontmatter スキーマ
 
@@ -43,22 +47,25 @@ wiki/<genre>/_proposals/
 type: proposal
 origin: curiosity | lint
 kind: new-page | append | contradiction | contradiction-found | missing-page | stale-fix | link-fix | orphan-fix | weak-relation
-target: "[[対象ページ]]"        # new-page / missing-page は新規候補ページ名
-status: pending | applied
-risk_flags: [hallucination-possible, judgment-required, low-precision]
+target: "[[対象ページ]]"        # 必ず wikilink でラップ。new-page / missing-page では「まだ作られていない新規候補ページ名」を `[[<候補名>]]` 形式で記載
+status: pending | applied | rejected
+risk_flags: []                    # 任意 (詳細は下記「必須・任意」)。空なら省略可
 confidence: high | medium | low
-cross_genre: ["<genre1>", "<genre2>"]   # 横断する場合のみ
+cross_genre: ["<genre1>", "<genre2>"]   # 横断する場合のみ、主ジャンルは除く
 created: YYYY-MM-DD
 applied: YYYY-MM-DD               # applied/ に移動時にのみ追加
+rejected: YYYY-MM-DD              # rejected/ に移動時にのみ追加
 ---
 ```
 
 ### 必須・任意
 
 - 必須: `type`, `origin`, `kind`, `target`, `status`, `confidence`, `created`
-- 任意: `risk_flags`（リスクがある場合のみ）、`cross_genre`（横断時のみ）、`applied`（適用時に追加）
+- 任意: `risk_flags`（リスクがある場合のみ。リスクなしの場合は `[]` または省略）、`cross_genre`（横断時のみ）、`applied`（apply 時に追加）、`rejected`（reject 時に追加）
 
-`risk_flags` が空の提案 = 「機械的に判定可能、無条件 apply 可」の最小ノイズ提案を意味する。
+提案ファイル新規生成時の `status` は必ず `pending`。apply で `applied`、reject で `rejected` に遷移する。
+
+`risk_flags` が空 (`[]` または省略) の提案 = 「機械的に判定可能、無条件 apply 可」の最小ノイズ提案を意味する。本ドキュメント中では「リスクなし」と表記する（「リスク無し」「`risk_flags` 空」も同義）。
 
 ## 本文テンプレート
 
@@ -96,6 +103,8 @@ applied: YYYY-MM-DD               # applied/ に移動時にのみ追加
 
 ## kind 一覧
 
+**本セクションが kind の正典**。`curiosity.md` / `lint.md` は対応する kind を本表から参照する。新しい kind を追加する場合は必ずここから更新する。
+
 9 種類。`origin` 別の発生源と典型的な `risk_flags` を整理する。
 
 | kind | origin | 何を提案するか | typical risk_flags |
@@ -104,11 +113,18 @@ applied: YYYY-MM-DD               # applied/ に移動時にのみ追加
 | `append` | curiosity | 既存ページに新しい論点を追記 | `hallucination-possible` |
 | `contradiction` | curiosity | 既存ページと新ソースの矛盾を発見 | `judgment-required` |
 | `contradiction-found` | lint | lint 1 で検出されたページ間矛盾 | `judgment-required` |
-| `missing-page` | lint | lint 3 の不足ページ候補を本文生成して提案 | `hallucination-possible`（強） |
+| `missing-page` | lint | lint 3 の不足ページ候補を本文生成して提案 | `hallucination-possible` |
 | `stale-fix` | lint | lint 4 の古い情報の更新案 | `judgment-required` |
-| `link-fix` | lint | lint 5a のベタテキスト → `[[ページ]]` 置換 | （なし）`confidence: high` |
+| `link-fix` | lint | lint 5a のベタテキスト → `[[ページ]]` 置換 | （なし） |
 | `orphan-fix` | lint | lint 2 の孤立ページに対するリンク元候補 | `judgment-required` |
 | `weak-relation` | lint | lint 5b のキーワード重複ベースの関連候補 | `low-precision` |
+
+**confidence の初期値の目安**:
+- `link-fix`: `high` (機械的に判定可能)
+- `missing-page`: `low` 寄り (本文生成あり、原本未参照のリスクが特に強い)
+- 上記以外: critic 判定により high〜low の幅。標準ケースで `medium`
+
+`contradiction` (curiosity 起点) と `contradiction-found` (lint 起点) を別 kind として分けているのは、検出ロジックが大きく異なるため (前者は新ソースとの照合、後者は既存ページ間の Grep 比較)。将来 apply 処理を分岐させる余地を残す目的もある。`missing-page` も `new-page` と機能的には近いが、検出経路 (lint vs curiosity) と幻覚リスクの強さが異なるため分離している。
 
 ## risk_flags の意味
 
@@ -148,10 +164,10 @@ applied: YYYY-MM-DD               # applied/ に移動時にのみ追加
 
 `apply` を選んだ際の処理は `kind` ごとに異なる。各処理の末尾で:
 
-- 対象ページの `updated` を today に
+- 対象ページの `updated` を today に (curiosity のサンプリング指標として機能する)
 - 対象ジャンルの `log.md` に追記
 - 提案ファイルに `applied: today` を追加し、`status: applied` に変更
-- 提案ファイルを `_proposals/applied/` へ移動
+- 提案ファイルを `_proposals/applied/` へ `mv` で移動
 
 ### kind 別の処理
 
@@ -162,9 +178,9 @@ applied: YYYY-MM-DD               # applied/ に移動時にのみ追加
 | `contradiction` / `contradiction-found` | 対象ページの該当箇所を Edit で更新、または `## 補足` セクションを新設して両論を併記。sources セクションに新ソースを追加 |
 | `missing-page` | `new-page` と同じだが、apply 前に「ハルシネーション可能性が強い」旨を AskUserQuestion で再確認 |
 | `stale-fix` | 提案で指定されたセクションを Edit で更新 |
-| `link-fix` | 対象ファイル `<file>:<line>` のベタテキストを `[[<ページ>]]` に置換 |
+| `link-fix` | 対象ファイル内の該当ベタテキストを `[[<ページ>]]` に Edit で置換 (位置情報 `<file>:<line>` は提案ファイルの参照情報。Edit は old_string/new_string マッチングで実行) |
 | `orphan-fix` | リンク元候補ページの `## 関連ページ` セクションに `- [[<孤立ページ>]] — <理由>` を追記。frontmatter の `related` にも追加 |
-| `weak-relation` | 両ページの `## 関連ページ` セクションに相互リンクを追記。frontmatter の `related` も両方更新 |
+| `weak-relation` | 両ページの `## 関連ページ` セクションに相互リンクを追記。frontmatter の `related` も両方更新。なお `low-precision` リスクのため reject されるケースが多い前提だが、apply された場合の処理は本行通り |
 
 ### 既存ページの構造尊重
 
@@ -180,18 +196,18 @@ applied: YYYY-MM-DD               # applied/ に移動時にのみ追加
 
 ```
 <N>件の提案が保存されました。
-  ⚠️ リスク有り: <M>件
-  ✓ リスク無し: <N-M>件
+  ⚠️ リスクあり: <M>件
+  ✓ リスクなし: <N-M>件
 
 今レビューしますか?
   - yes: 順番にレビュー
   - later: 後で。次回 curiosity/lint 起動時にリマインド
-  - apply-all-safe: リスク無しのみ全件 apply (リスク有りは保留)
+  - apply-all-safe: リスクなしのみ全件 apply (リスクありは保留)
 ```
 
 ### Step 2: 各提案のレビュー
 
-`yes` を選んだ場合、リスク有り → リスク無しの順で 1 件ずつ表示:
+`yes` を選んだ場合、リスクあり → リスクなしの順で 1 件ずつ表示:
 
 ```
 [<i>/<N>] <アイコン> <kind>: <target> (genre: <genre>)
@@ -205,7 +221,7 @@ applied: YYYY-MM-DD               # applied/ に移動時にのみ追加
   - apply: そのまま反映
   - edit:  提案ファイルを編集してから反映
   - skip:  保留 (pending のまま残す)
-  - reject: 却下 (ファイル削除)
+  - reject: 却下 (_proposals/rejected/ へ退避)
   - quit:  レビュー終了 (残りは pending のまま)
 ```
 
@@ -213,7 +229,7 @@ applied: YYYY-MM-DD               # applied/ に移動時にのみ追加
 
 - `⚠️`: `hallucination-possible` または `judgment-required` を含む
 - `?`: `low-precision` のみ
-- なし: `risk_flags` 空
+- なし: `risk_flags` 空 (= リスクなし)
 
 ### Step 3: 完了レポート
 
@@ -247,15 +263,17 @@ pending 残存: 各ジャンルの _proposals/ を参照
 ## 安全側のルール
 
 - **apply は kind 別の処理を厳密に守る**。本文の構造を尊重し、追記中心。セクション丸ごとの差し替えはユーザー確認を経由する
-- **reject = ファイル削除**。却下理由を残したい場合は提案ファイルに `## 却下理由` を書いてから skip する運用も可（pending のまま残し、忘れたら次回リマインドで再判断）
+- **reject = `_proposals/rejected/` への mv 退避**。物理削除はしない。frontmatter に `rejected: YYYY-MM-DD` を追加し `status: rejected` に変更してから移動する。却下理由を残したい場合は本文末尾に `## 却下理由` を追記してから reject、または skip して `pending` のまま残し次回リマインドで再判断
 - **skip = `status: pending` のまま**。次回リマインド対象に残る
 - **apply 時に対象ページの `updated` を today に**。これで `curiosity` のサンプリング指標が自然に動く
 - **applied/ に移動時、frontmatter に `applied: YYYY-MM-DD` を追加**。`status: applied` に変更
-- **`apply-all-safe` でも対象ページ数が多い場合は途中で進捗を出す**（10 件超なら 5 件ごとに「continue? (y/n)」を挟む）
+- **`apply-all-safe` でも対象ページ数が多い場合は途中で進捗を出す**（10 件超なら 5 件ごとに「continue? (y/n)」を挟む）。`curiosity` / `lint` がこの条項を呼び出す
 - **横断ページの主ジャンル誤りは edit で修正可**。`cross_genre` フィールドが残っているので、レビュー時にユーザーが気付ける
 - **自動コミットしない**。Vault が Git 管理下でも、git 操作はユーザーが明示的に指示した場合のみ
 
 ## 他動詞との関係
+
+SKILL.md の「即時更新 vs 提案経由」セクションが概観を提供する。本表は proposals 視点での各動詞の関与を補足する。
 
 | 動詞 | proposals との関係 |
 |---|---|
@@ -266,4 +284,4 @@ pending 残存: 各ジャンルの _proposals/ を参照
 | `curiosity` | 提案を生成する主要動詞 |
 | `lint` | 提案を生成する主要動詞 |
 
-`ingest` / `save` / `recompile` は **ユーザーが明示的に発火させた書き込み操作** なので即時更新。`curiosity` / `lint` は **LLM 主導の検出/生成** なので提案経由。この区別が「即時更新 vs 提案経由」の判断基準になる。
+判断基準の詳細は SKILL.md「即時更新 vs 提案経由」セクションを参照。

@@ -37,11 +37,14 @@ updated: YYYY-MM-DD
 | `log` | 操作ログ (`log.md` 専用) |
 | `genre-index` | ジャンル内カタログ (`wiki/<genre>/index.md` 専用) |
 | `root-index` | 全体カタログ (`$WIKI_ROOT/index.md` 専用) |
+| `proposal` | curiosity/lint が生成する修正提案 (`_proposals/` 配下、詳細は [proposals.md](proposals.md)) |
 
 ### 必須・任意
 
 - 必須: `title`, `genre`(ルート以外), `type`, `created`, `updated`
 - 任意: `sources`, `related`, `source_url`, `source_kind`, `fetched_at` (source-summaryで使用)
+
+ただし `type: proposal` は **本規約の対象外**。proposal ファイルは [proposals.md](proposals.md) の「frontmatter スキーマ」に従う独自のフィールド構成を持つ（`title` / `updated` は不要、代わりに `origin` / `kind` / `target` / `status` / `confidence` などを使用）。
 
 ### `source_kind` の値
 
