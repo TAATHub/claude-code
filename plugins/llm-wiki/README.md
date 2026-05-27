@@ -15,12 +15,13 @@ Andrej Karpathy が提唱する **LLM Wiki** パターンを Obsidian Vault 上�
 
 ## 仕組み
 
-1. **ingest** — Web Clipper・URL・手動ノートのいずれの入口からも、`sources/<genre>/` のソースを読み込み、要点を抽出して Wiki ページを生成
+1. **ingest** — Web Clipper・URL・手動ノートのいずれの入口からも、`inbox/` や `sources/<genre>/` のソースを読み込み、要点を抽出して Wiki ページを生成
 2. **save** — 直前の Claude Code 会話を `source_kind: conversation` として取り込み、議論や設計判断を Wiki 化
-3. **query** — Wiki 横断検索 + 統合回答 + 必要に応じた新ページ提案
-4. **lint** — 矛盾・孤立ページ・欠落リンク・古い情報を 5 観点で監査（レポートのみ、自動修正なし）
-5. **recompile** — 取り込み済みソースをスキーマ進化に合わせて再評価（メンテナンス用）
-6. **init** — 新ジャンルや Vault 全体のスケルトン生成
+3. **query** — Wiki 横断検索 + 統合回答 + 必要に応じた新ページ提案。検索ログを `log.md` に追記し、curiosity の除外集合に貢献
+4. **lint** — 矛盾・孤立ページ・欠落リンク・古い情報・不足ページなどを 5 観点で監査し、修正案を **proposals** として書き出す
+5. **curiosity** — 既存 Wiki ページを起点に質問を自動生成・自答し、新切り口・追記候補・矛盾発見を proposals として書き出す。Wiki 全体を能動的に点検する動詞
+6. **recompile** — 取り込み済みソースをスキーマ進化に合わせて再評価（メンテナンス用）
+7. **init** — 新ジャンルや Vault 全体のスケルトン生成
 
 ## 動詞ディスパッチ
 
@@ -31,9 +32,20 @@ Andrej Karpathy が提唱する **LLM Wiki** パターンを Obsidian Vault 上�
 | `save [タイトル]` | 直前会話を `source_kind: conversation` として取り込み + コンパイル |
 | `recompile <パス>` | 取り込み済みソースの再コンパイル（メンテナンス用） |
 | `query <質問>` | Wiki 検索・統合回答・必要なら新ページ提案 |
-| `lint` | Vault 健全性チェック（レポート出力のみ） |
+| `lint` | Vault 健全性チェック + 修正案を proposals として書き出し |
+| `curiosity [--budget N=5]` | Wiki 全体を能動的に点検し、自動生成質問の結果を proposals として書き出し |
 
 ## 設計の特徴
+
+### 即時更新 vs 提案経由
+
+動詞は Wiki 本体への反映方法で 3 系統に分かれる。
+
+- **即時更新**: `ingest` / `save` / `recompile` — ユーザーが明示的に発火させた書き込み操作。即座に Wiki を更新する
+- **提案経由**: `curiosity` / `lint` — LLM 主導で検出・生成する操作。修正案を `_proposals/` に書き出し、対話的レビュー (`apply` / `edit` / `skip` / `reject` / `quit`) を経て反映する
+- **読み取り中心**: `query` — Wiki を読み合成回答を返す。`log.md` への追記は必ず発生し、curiosity の除外集合に貢献する
+
+`ingest` / `save` / `recompile` は意図が明確な書き込み操作なので即時更新、`curiosity` / `lint` は LLM 生成テキストを Wiki に混入させる前に必ずユーザー承認を挟む、という区別が中核の安全設計。
 
 ### 取り込み状態は frontmatter `type` で判定
 
@@ -50,15 +62,23 @@ ingest は内部的に「Phase A（収集確定）」と「Phase B（コンパ�
 
 `wiki/<genre>/` でディレクトリを切り、各ジャンルに `_overview.md`（知識マップ）と `index.md`（カタログ）を持つ。`_overview.md` は **構造変化があった時のみ** 更新する（毎ページ追加では更新しない）。
 
+### proposals system による修正案の隔離
+
+`curiosity` / `lint` は修正案を `wiki/<genre>/_proposals/` に隔離保存する。各提案は `risk_flags` (hallucination-possible / judgment-required / low-precision) と `confidence` を持ち、ユーザーがレビュー時に判断材料として使う。apply で本体反映、reject で `_proposals/rejected/` に退避（物理削除はしない、git 履歴で追跡可能）。
+
 ## ディレクトリ構造
 
 ```
 <Vault>/llm-wiki/           # = $WIKI_ROOT
 ├── index.md                # 全体カタログ（ジャンル一覧）
+├── inbox/                  # 未分類ソースの一時置き場（Web Clipper 等の受け皿）
 ├── wiki/<genre>/
 │   ├── index.md            # ジャンル内ページカタログ
 │   ├── log.md              # ジャンル内操作ログ（追記専用）
 │   ├── _overview.md        # ジャンル概要・知識マップ
+│   ├── _proposals/         # curiosity/lint が生成する修正提案の隔離保存先
+│   │   ├── applied/        # apply 済みアーカイブ
+│   │   └── rejected/       # reject 済みアーカイブ
 │   └── <ページ名>.md
 └── sources/<genre>/        # ソース要約（原本は別所在）
 ```
@@ -66,7 +86,7 @@ ingest は内部的に「Phase A（収集確定）」と「Phase B（コンパ�
 ## 前提
 
 - Obsidian Vault が既に存在すること
-- Web Clipper でソースを `sources/<genre>/` に保存する運用を推奨
+- Web Clipper でソースを `inbox/` に保存する運用を推奨（`ingest` 実行時にジャンル振り分け）
 
 ## セットアップ
 
@@ -110,18 +130,23 @@ export LLM_WIKI_VAULT_ROOT="$HOME/ObsidianVault"
 
 | シナリオ | 推奨動詞 |
 |---|---|
-| Web 記事を読んだ | Web Clipper で `sources/<genre>/` に保存 → `/llm-wiki ingest` |
+| Web 記事を読んだ | Web Clipper で `inbox/` に保存 → `/llm-wiki ingest` |
 | URL をその場で取り込みたい | `/llm-wiki ingest <URL>` |
-| 手書きメモを Wiki 化 | `sources/<genre>/` に手動で配置 → `/llm-wiki ingest` |
+| 手書きメモを Wiki 化 | `inbox/` または `sources/<genre>/` に手動配置 → `/llm-wiki ingest` |
 | 会話で得た知見を残す | `/llm-wiki save` |
 | Wiki 構造を進化させた後 | `/llm-wiki recompile <パス>` |
+| Wiki 全体を能動的に点検したい | `/llm-wiki curiosity` |
+| 構造的健全性を監査したい | `/llm-wiki lint` |
+
+`curiosity` と `lint` はどちらも proposals を生成する。週次〜月次で両方を回すと、内容的活性度（curiosity）と構造的健全性（lint）が相補的にメンテナンスされる。
 
 ## 安全側の方針
 
 - 自動コミットしない（git 操作はユーザーが明示指示時のみ）
 - ソース原本は変更不可
 - 破壊的操作（ページ削除・大規模リネーム）の前確認
-- lint はレポートのみ、自動修正しない
+- `curiosity` / `lint` は proposals 経由でのみ Wiki に反映、対話的レビューを必ず経由する
+- reject は物理削除せず `_proposals/rejected/` への mv 退避（git 履歴で追跡可能）
 
 ## 使い方
 
@@ -130,13 +155,15 @@ export LLM_WIKI_VAULT_ROOT="$HOME/ObsidianVault"
 /llm-wiki init ai
 /llm-wiki ingest sources/ai/article.md
 /llm-wiki query "LLM Wikiパターンとは？"
-/llm-wiki lint
+/llm-wiki lint                      # 修正案を _proposals/ に書き出し、対話的レビュー
+/llm-wiki curiosity --budget 5      # 5 ページを点検、派生質問を自答して proposals 化
 ```
 
 ## 設計の参考
 
-- Andrej Karpathy が X で提唱した LLM Wiki パターン
+- Andrej Karpathy が X で提唱した LLM Wiki パターン（"exploration compounds knowledge"）
 - AgriciDaniel/claude-obsidian（単一 Vault + hot.md キャッシュ設計）
 - ekadetov/llm-wiki（マルチ wiki + ingest/compile 分離 + qmd RAG）
+- curiosity-driven exploration / self-questioning 系の学術研究（CuriousLLM, AgentEvolver, Self-Ask など）
 
-本プラグインはジャンル単位の意味的分割と `_overview.md` による知識マップを重視している点が固有。
+本プラグインはジャンル単位の意味的分割と `_overview.md` による知識マップ、および `curiosity` / `lint` を共通の proposals system に統合した点が固有。
