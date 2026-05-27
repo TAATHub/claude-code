@@ -47,6 +47,14 @@
       "version": "1.0.0",
       "category": "productivity",
       "tags": ["wiki", "knowledge-base", "obsidian", "second-brain", "llm-wiki"]
+    },
+    {
+      "name": "create-commit",
+      "source": "./plugins/create-commit",
+      "description": "Create Conventional Commits with configurable target (staged/all) and language (en/ja)",
+      "version": "1.0.0",
+      "category": "development",
+      "tags": ["git", "commit", "conventional-commits", "workflow"]
     }
   ]
 }
