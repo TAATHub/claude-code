@@ -67,6 +67,8 @@ $WIKI_ROOT/wiki/<genre>/
 $WIKI_ROOT/sources/<genre>/   (空ディレクトリ)
 ```
 
+`_proposals/` は `init` では作成しない。`curiosity` / `lint` の初回実行時に必要に応じて `mkdir -p` で lazy 作成される（詳細は [proposals.md](proposals.md)）。
+
 ### `wiki/<genre>/index.md` テンプレート
 
 ```markdown
