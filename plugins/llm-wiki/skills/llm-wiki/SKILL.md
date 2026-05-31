@@ -109,6 +109,7 @@ Andrej Karpathy が提唱する「LLM Wiki」を Obsidian Vault 上に構築・�
 - 候補ページを Read し、必要に応じて wikilink を 2hop まで辿る
 - どれにも当たらないときのみ Grep にフォールバックする
 - embedding ベース RAG は使わない（外部依存・freshness・auditability の観点から）
+- **Read は依存レベルごとに 1 メッセージ内で並列発行する**（root → ジャンルメタ → ページ の順に依存。同一レベル内のファイルは束ねて読み、逐次往復を避ける）
 
 詳細な実行手順は [references/query.md](references/query.md) を参照。
 
