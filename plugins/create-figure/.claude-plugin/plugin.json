@@ -1,0 +1,13 @@
+{
+  "name": "create-figure",
+  "version": "1.0.0",
+  "description": "Create figures and tables as HTML, render to PNG with headless Chrome, and trim to even margins",
+  "author": {
+    "name": "TAAT"
+  },
+  "homepage": "https://github.com/TAATHub/claude-code",
+  "repository": "https://github.com/TAATHub/claude-code",
+  "license": "MIT",
+  "keywords": ["figure", "diagram", "table", "png", "rendering", "html", "headless-chrome"],
+  "skills": "./skills/"
+}

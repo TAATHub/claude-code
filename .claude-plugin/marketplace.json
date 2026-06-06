@@ -55,6 +55,14 @@
       "version": "1.0.0",
       "category": "development",
       "tags": ["git", "commit", "conventional-commits", "workflow"]
+    },
+    {
+      "name": "create-figure",
+      "source": "./plugins/create-figure",
+      "description": "Create figures and tables as HTML, render to PNG with headless Chrome, and trim to even margins",
+      "version": "1.0.0",
+      "category": "productivity",
+      "tags": ["figure", "diagram", "table", "png", "rendering", "html"]
     }
   ]
 }
