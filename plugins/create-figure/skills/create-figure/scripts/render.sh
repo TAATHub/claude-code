@@ -14,6 +14,10 @@ CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 [ -x "$CHROME" ] || { echo "Chrome not found at: $CHROME" >&2; exit 1; }
 [ -f "$HTML" ]   || { echo "HTML not found: $HTML" >&2; exit 1; }
 
+# 既存の出力を削除する。残っていると、Chrome が上書きする前に「出力サイズが
+# 安定した」と誤検知して古い画像のまま返ってしまうため（再生成のたびに必須）。
+rm -f "$OUT"
+
 # 絶対パス -> file:// URL（空白・日本語を正しくエンコード）
 ABS="$(cd "$(dirname "$HTML")" && pwd)/$(basename "$HTML")"
 URL="$(python3 - "$ABS" <<'PY'
