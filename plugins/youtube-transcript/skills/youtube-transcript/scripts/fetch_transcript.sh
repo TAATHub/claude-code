@@ -27,7 +27,13 @@ fi
 
 mkdir -p "$WORKDIR"
 
-YTDLP=(uvx yt-dlp)
+# yt-dlpはバージョンを固定する(供給網ハードニング)。
+# 未固定(uvx yt-dlp)だとPyPIの最新へ浮動し、悪性リリースをレビュー猶予なく実行しうるため。
+# 更新時はこの値を意図的に引き上げ、リリースノートを確認すること:
+#   uvx yt-dlp@latest --version  で最新を確認 → 動作確認のうえ YTDLP_VERSION を更新
+# 環境変数 YTDLP_VERSION で一時的な上書きも可能。
+YTDLP_VERSION="${YTDLP_VERSION:-2026.06.09}"
+YTDLP=(uvx "yt-dlp@${YTDLP_VERSION}")
 
 # --- 1. メタ情報取得 ---
 # 各フィールドを1行ずつ出力させる(区切り文字がタイトルに含まれる問題を回避)
