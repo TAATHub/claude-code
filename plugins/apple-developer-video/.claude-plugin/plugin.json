@@ -1,0 +1,13 @@
+{
+  "name": "apple-developer-video",
+  "version": "1.0.0",
+  "description": "Fetch an Apple Developer video session (WWDC/Tech Talks) page and write a Markdown file with summary, detailed explanation, and full official transcript",
+  "author": {
+    "name": "TAAT"
+  },
+  "homepage": "https://github.com/TAATHub/claude-code",
+  "repository": "https://github.com/TAATHub/claude-code",
+  "license": "MIT",
+  "keywords": ["apple", "wwdc", "developer", "transcript", "session", "swift", "markdown", "summary"],
+  "skills": "./skills/"
+}
