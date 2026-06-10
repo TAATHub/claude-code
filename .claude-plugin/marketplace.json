@@ -71,6 +71,14 @@
       "version": "1.0.0",
       "category": "productivity",
       "tags": ["youtube", "transcript", "subtitle", "yt-dlp", "markdown", "summary"]
+    },
+    {
+      "name": "apple-developer-video",
+      "source": "./plugins/apple-developer-video",
+      "description": "Fetch an Apple Developer video session (WWDC/Tech Talks) page and write a Markdown file with summary, detailed explanation, and full official transcript",
+      "version": "1.0.0",
+      "category": "productivity",
+      "tags": ["apple", "wwdc", "developer", "transcript", "session", "swift", "markdown"]
     }
   ]
 }

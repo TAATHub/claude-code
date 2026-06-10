@@ -33,7 +33,7 @@ Apple Developer の動画セッションページ（`developer.apple.com/videos/
 
 ## Step 1: 入力の解釈
 
-引数を空白で分割して解釈する。
+`$ARGUMENTS` を受け取り、空白で分割して解釈する。
 
 - 先頭の `http`/`https` で始まるトークン → **Apple Developer 動画URL**
   （`developer.apple.com/videos/play/<event>/<session>/` 形式。例: `.../wwdc2026/279/`）
@@ -58,11 +58,12 @@ Apple Developer の動画セッションページ（`developer.apple.com/videos/
 stdout にKEY=VALUE形式のマニフェストが出力される。`STATUS` を確認する:
 
 - `STATUS=OK`: 以下を取得。
-  - メタ: `ID` `EVENT` `SESSION` `TITLE` `DURATION` `UPLOAD_DATE`(空のことあり) `URL` `SUB_LANG`(=en) `CHARS` `CHAPTERS` `CODE_BLOCKS`
+  - メタ: `SOURCE`(=apple。下流で取得元を判別するための識別子) `ID` `EVENT` `SESSION` `TITLE` `DURATION` `UPLOAD_DATE`(空のことあり) `URL` `SUB_LANG`(=en) `CHARS` `CHAPTERS` `CODE_BLOCKS`
   - `TRANSCRIPT_FILE`: 逐語トランスクリプト全文(原語=英語)。`Read` で読み込む。
   - `SUMMARY_FILE`: 章ごと要約のJSON配列 `[{time,title,summary}]`。`Read` で読み込む。
   - `CODE_FILE`: 公式サンプルコードのJSON配列 `[{time,title,code}]`。`Read` で読み込む（`CODE_BLOCKS=0` の回もある）。
   - `RELATED`: 関連ドキュメントリンク。`TITLE :: URL` を ` | ` で連結（無いこともある）。
+  - `WARN`(任意): 出力された場合はHTML構造変化の兆候(章Summary・サンプルコードが両方0件)。ユーザーへの報告に一言添える。
 - `STATUS=NOT_APPLE_VIDEO`: Apple Developer動画URLでない。youtube-transcriptスキルを案内して終了。
 - `STATUS=APPLE_PARSE_ERROR`: HTML構造変化/ログイン要求/トランスクリプト無しの可能性。
   その旨を伝え、同一セッションのYouTubeミラーがあれば youtube-transcript での取得を提案して終了。
