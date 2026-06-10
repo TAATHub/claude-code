@@ -63,6 +63,14 @@
       "version": "1.0.0",
       "category": "productivity",
       "tags": ["figure", "diagram", "table", "png", "rendering", "html"]
+    },
+    {
+      "name": "youtube-transcript",
+      "source": "./plugins/youtube-transcript",
+      "description": "Fetch a YouTube video's transcript and write a Markdown file with summary, detailed explanation, and full transcript",
+      "version": "1.0.0",
+      "category": "productivity",
+      "tags": ["youtube", "transcript", "subtitle", "yt-dlp", "markdown", "summary"]
     }
   ]
 }

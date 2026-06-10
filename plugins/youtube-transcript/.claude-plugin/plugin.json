@@ -1,0 +1,13 @@
+{
+  "name": "youtube-transcript",
+  "version": "1.0.0",
+  "description": "Fetch a YouTube video's transcript and write a Markdown file with summary, detailed explanation, and full transcript",
+  "author": {
+    "name": "TAAT"
+  },
+  "homepage": "https://github.com/TAATHub/claude-code",
+  "repository": "https://github.com/TAATHub/claude-code",
+  "license": "MIT",
+  "keywords": ["youtube", "transcript", "subtitle", "yt-dlp", "markdown", "summary"],
+  "skills": "./skills/"
+}
