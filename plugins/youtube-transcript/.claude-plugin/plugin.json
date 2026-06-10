@@ -1,7 +1,7 @@
 {
   "name": "youtube-transcript",
   "version": "1.0.0",
-  "description": "Fetch a YouTube video's transcript with yt-dlp and write a Markdown file with summary, detailed explanation, and full transcript",
+  "description": "Fetch a YouTube video's transcript and write a Markdown file with summary, detailed explanation, and full transcript",
   "author": {
     "name": "TAAT"
   },

@@ -15,7 +15,7 @@ YouTube動画の字幕を取得し、**要約＋詳細解説＋整形済み全�
 
 ## 前提
 
-- `uv`/`uvx` が利用可能であること（`yt-dlp` は `uvx` が都度取得する）。
+- `uv`/`uvx` および `python3` が利用可能であること（`yt-dlp` は `uvx` が都度取得する）。
 - ネットワーク接続が必要。
 - **供給網ハードニング**: `yt-dlp` は**バージョン固定**で実行する（`uvx yt-dlp@<固定版>`）。
   未固定だとPyPIの最新へ浮動し、悪性リリースをレビュー猶予なく実行しうるため。
@@ -33,7 +33,8 @@ YouTube動画の字幕を取得し、**要約＋詳細解説＋整形済み全�
 - **URLが無い場合**: `AskUserQuestion` でYouTube URLを尋ねる
 - **出力先が無い場合**: `AskUserQuestion` で保存先を尋ねる
   - 選択肢例: 「llm-wiki/inbox に保存」「カレントディレクトリに保存」「パスを直接指定」
-  - llm-wiki/inbox の絶対パス: `/Users/taat/Library/Mobile Documents/iCloud~md~obsidian/Documents/WikiVault/llm-wiki/inbox`
+  - 「llm-wiki/inbox」が選ばれた場合の実パスは環境依存。`/llm-wiki` スキルが管理する Vault の
+    `llm-wiki/inbox` を使う（パスをハードコードせず、ユーザーの環境に合わせて解決する）。
 
 ## Step 2: 字幕・メタ情報の取得
 
@@ -47,12 +48,13 @@ YouTube動画の字幕を取得し、**要約＋詳細解説＋整形済み全�
 
 stdout にKEY=VALUE形式のマニフェストが出力される。`STATUS` を確認する:
 
-- `STATUS=OK`: `TITLE` `UPLOADER` `DURATION` `UPLOAD_DATE` `URL` `SUB_LANG` `WORDS` `TRANSCRIPT_FILE` を取得。
+- `STATUS=OK`: `TITLE` `UPLOADER` `DURATION` `UPLOAD_DATE` `URL` `SUB_LANG` `WORDS` `CHARS` `TRANSCRIPT_FILE` を取得。
   `TRANSCRIPT_FILE` のパスを `Read` で読み込み、整形済みトランスクリプト本文を得る。
+  （`WORDS` は空白区切り語数で日本語では実質無意味。日本語字幕では `CHARS`（文字数）を報告に使う）
 - `STATUS=NO_SUBTITLES`: 字幕が存在しない。ユーザーにその旨を伝えて終了（無理に本文生成しない）。
 - `STATUS=ERROR`: `ERROR_MESSAGE` を提示して終了。
 
-> 補足: スクリプトは日本語字幕(手動/自動/翻訳)を優先し、無ければ原語(英語等)にフォールバックする。
+> 補足: スクリプトは「日本語 → 英語 → 動画の原語 → 任意の手動字幕」の順で字幕を探す。
 > `SUB_LANG` が `en` 等の場合、トランスクリプト全文は原語のまま。要約・解説は日本語で書く。
 
 ## Step 3: Markdownファイルの生成
