@@ -16,7 +16,7 @@ LLM Wiki 内のすべてのページが従う共通規約。
 ---
 title: "ページタイトル"
 genre: <genre>
-type: concept | entity | source-summary | comparison | synthesis | overview | log | genre-index | root-index
+type: concept | entity | source | source-summary | comparison | synthesis | overview | log | genre-index | root-index
 sources: ["[[ソース名1]]", "[[ソース名2]]"]
 related: ["[[関連ページ1]]", "[[関連ページ2]]"]
 created: YYYY-MM-DD
@@ -30,7 +30,8 @@ updated: YYYY-MM-DD
 |---|---|
 | `concept` | 抽象概念・理論・手法 |
 | `entity` | 具体的なツール・製品・人物 |
-| `source-summary` | 単一ソースの要約（`sources/<genre>/` 配下） |
+| `source` | 単一ソースの **raw 原文**（`sources/<genre>/` 配下。本文は無加工、frontmatter にメタ付与） |
+| `source-summary` | **旧仕様**。単一ソースの要約（`sources/<genre>/` 配下）。新規には使わず、既存ファイルの完了マーカーとしてのみ有効 |
 | `comparison` | 複数概念の比較表 |
 | `synthesis` | 複数ソース由来の統合知見（横断ページ）|
 | `overview` | ジャンル概要 (`_overview.md` 専用) |
@@ -42,13 +43,13 @@ updated: YYYY-MM-DD
 ### 必須・任意
 
 - 必須: `title`, `genre`(ルート以外), `type`, `created`, `updated`
-- 任意: `sources`, `related`, `source_url`, `source_kind`, `fetched_at` (source-summaryで使用)
+- 任意: `sources`, `related`, `source_url`, `source_kind`, `fetched_at`, `generated_pages` (`source` / `source-summary` で使用)
 
 ただし `type: proposal` は **本規約の対象外**。proposal ファイルは [proposals.md](proposals.md) の「frontmatter スキーマ」に従う独自のフィールド構成を持つ（`title` / `updated` は不要、代わりに `origin` / `kind` / `target` / `status` / `confidence` などを使用）。
 
 ### `source_kind` の値
 
-source-summary の `source_kind` フィールドに使う値:
+`source` / `source-summary` の `source_kind` フィールドに使う値:
 
 | 値 | 用途 |
 |---|---|
@@ -60,14 +61,15 @@ source-summary の `source_kind` フィールドに使う値:
 | `conversation` | Claude Code との対話セッション（`/llm-wiki save` 由来） |
 | `note` | ユーザー手動作成のメモ |
 
-### `type: source-summary` はコンパイル完了マーカー
+### `type: source` はコンパイル完了マーカー
 
-`sources/<genre>/` 配下のファイルにおいて **`type: source-summary` の有無は ingest 完了状態を表す唯一の真実**。
+`sources/<genre>/` 配下のファイルにおいて **`type` が取り込み済み値（`source` または旧 `source-summary`）かどうかが ingest 完了状態を表す唯一の真実**。新規 ingest は raw 原文を保持して `type: source` を立てる。`type: source-summary` は旧仕様の要約済みファイルで、完了状態としてそのまま有効（再取り込みはしない）。
 
 | 状態 | frontmatter の `type` | 意味 |
 |---|---|---|
-| 未取り込み（コンパイル待ち） | フィールドなし、または `source-summary` 以外 | 次回 `/llm-wiki ingest` の対象 |
-| 取り込み済み | `type: source-summary` | コンパイル完了。再処理したい場合は `recompile` |
+| 未取り込み（コンパイル待ち） | フィールドなし、または `source`/`source-summary` 以外 | 次回 `/llm-wiki ingest` の対象 |
+| 取り込み済み（raw） | `type: source` | コンパイル完了。本文は raw 原文。再処理したい場合は `recompile` |
+| 取り込み済み（旧要約） | `type: source-summary` | 旧仕様で要約済み。完了状態として有効。再処理は `recompile` |
 
 検出は frontmatter のこのフィールド 1 つで判定する。`log.md` の文字列 grep に依存しない（Unicode 正規化や引用符差異の問題を避けるため）。
 
@@ -94,8 +96,8 @@ source-summary の `source_kind` フィールドに使う値:
 ジャンルが未確定 / 迷う場合は `inbox/` に置く。ジャンルが確定しているなら `sources/<genre>/` に直接置いてもよい。いずれの場合も:
 
 - frontmatter の `type` を **書かない**（推奨）。次の `/llm-wiki ingest` で自動的に処理される
-- `type: source-summary` を最初から書くと未取り込み判定がスキップされてしまう
-- 既に `type: source-summary` 済みのファイルを再評価したい場合は `/llm-wiki recompile <パス>` を使う
+- `type: source`（や旧 `source-summary`）を最初から書くと未取り込み判定がスキップされてしまう
+- 既に `type: source`/`source-summary` 済みのファイルを再評価したい場合は `/llm-wiki recompile <パス>` を使う
 
 #### Web Clipper の保存先
 
@@ -281,7 +283,7 @@ updated: YYYY-MM-DD
 
 ## 禁止事項
 
-- ソース原本の改変（`sources/` 以下の要約は更新可。原本ファイルそのものは触らない）
+- ソース raw 本文の改変（`sources/` 配下の本文は取得した原文のまま。更新してよいのは frontmatter メタ（`type`/`generated_pages`/`updated` 等）のみで、本文テキストは触らない）
 - frontmatter なしのページ作成
 - 相対パスでの wikilink (`[[../foo/bar]]`)
 - 英語のみのページタイトル（コードや製品名はOK、ただしページタイトル全体は日本語ベース）

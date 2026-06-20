@@ -2,7 +2,11 @@
 
 `ingest [パス|URL]` はソースを取り込み Wiki ページを生成する。
 
-内部的には **Phase A（収集確定）** と **Phase B（コンパイル）** の 2 段階だが、ユーザー視点では 1 コマンドで完結する。Phase B 完了時にのみ source-summary の frontmatter `type: source-summary` が立つので、途中失敗時は再実行で安全に復旧できる（冪等）。
+内部的には **Phase A（収集確定）** と **Phase B（コンパイル）** の 2 段階だが、ユーザー視点では 1 コマンドで完結する。Phase B 完了時にのみ frontmatter `type: source` が立つので、途中失敗時は再実行で安全に復旧できる（冪等）。
+
+> **ソースは raw 原文を保持する（Karpathy 原典準拠）**。ingest はソース本文を**要約に書き換えない**。`sources/<genre>/` には取得した原文をそのまま残し、frontmatter にメタ（`type` / `source_url` / `generated_pages` 等）のみを付与する。要約・知識の構造化は **wiki ページ側**が担う。`type: source` は「raw 原文 + メタ付与済み」の完了マーカー。
+>
+> 旧仕様で要約済みの `type: source-summary` ファイルも有効な完了状態として扱う（再取り込みはしない）。検出・recompile・lint はいずれも `source` と `source-summary` の両方を「取り込み済み」とみなす。
 
 ## 検出方式
 
@@ -10,11 +14,12 @@
 
 ```python
 # 検出ロジック（疑似コード）
+DONE_TYPES = {'source', 'source-summary'}              # source=raw(新) / source-summary=旧要約。両方とも取り込み済み
 inbox_targets = glob('inbox/*.md')                     # 全件 triage 対象（type 不問）
 genre_targets = []
 for fp in glob('sources/*/*.md'):                      # 直下 1 階層のジャンルディレクトリを走査
     fm = parse_frontmatter(fp)
-    if fm.get('type') != 'source-summary':
+    if fm.get('type') not in DONE_TYPES:
         # 未取り込み（Web Clipper 生 / 手動ノート / Phase B 失敗）
         genre_targets.append(fp)
 # 処理順: inbox_targets を triage で振り分け → 移動先と genre_targets を合流して Phase B
@@ -24,7 +29,7 @@ for fp in glob('sources/*/*.md'):                      # 直下 1 階層のジ�
 
 | 呼び出し | 動作 |
 |---|---|
-| `/llm-wiki ingest` | `inbox/*.md` を triage（Phase A-0）→ `sources/<genre>/*.md` のうち `type: source-summary` でないものを順次処理 |
+| `/llm-wiki ingest` | `inbox/*.md` を triage（Phase A-0）→ `sources/<genre>/*.md` のうち `type` が取り込み済み（`source` / `source-summary`）でないものを順次処理 |
 | `/llm-wiki ingest <パス>` | A-1 の入力解釈に従って処理（4 ケース: `sources/<genre>/` 配下 / `inbox/` 配下 / sources 外パス / URL）|
 | `/llm-wiki ingest <URL>` | WebFetch → ジャンル判定（A-3）→ `sources/<genre>/<slug>.md` 保存（Phase A）→ Phase B。**URL 経路は `inbox/` を経由しない**。`source_url` 重複時はユーザー確認 |
 
@@ -42,7 +47,7 @@ Glob ツールに `$WIKI_ROOT/inbox/*.md` パターンを渡して候補を取�
 
 | frontmatter | 扱い |
 |---|---|
-| `type: source-summary` あり | **異常状態**。警告ログを出して `inbox/` に残置（triage 対象から除外）。完了レポートの「要レビュー事項」に列挙し、「該当 genre が `wiki/<genre>/` に存在するなら手動で `sources/<genre>/` に移動して `recompile` する」「存在しないなら `type` フィールドを除去して再 ingest する」のリカバリ案内を併記する |
+| `type: source` または `type: source-summary` あり | **異常状態**（取り込み済みマーカーが inbox に居る）。警告ログを出して `inbox/` に残置（triage 対象から除外）。完了レポートの「要レビュー事項」に列挙し、「該当 genre が `wiki/<genre>/` に存在するなら手動で `sources/<genre>/` に移動して `recompile` する」「存在しないなら `type` フィールドを除去して再 ingest する」のリカバリ案内を併記する |
 | `genre: <値>` あり、かつ `wiki/<値>/` ディレクトリが存在 | **fast path**。**A-0-2（ジャンル判定）をバイパス** して A-0-4 のファイル移動へ直行する（A-0-3 の進捗ログには「fast path」として 1 行記録）。frontmatter の `genre` 値が採用ジャンルとして確定する |
 | `genre: <値>` あり、かつ `wiki/<値>/` が存在しない（typo / 未 init） | 通常の triage 対象に戻す（A-0-2 で再判定。frontmatter の値を新ジャンル候補スラッグの第 1 候補として優先採用） |
 | 上記以外（frontmatter なし / `genre` フィールドなし） | 通常の triage 対象（A-0-2 へ） |
@@ -116,7 +121,7 @@ A-0-1 fast path で確定したファイル、および A-0-3 で自動振り分
    | 既存値が採用ジャンルと一致 | 何もしない |
    | 既存値が採用ジャンルと異なる | `genre: <旧値>` を `genre: <採用ジャンル>` に置換 |
 
-   `title` フィールドが既存 frontmatter に欠けている場合（Web Clipper の `tags: ["clippings"]` のみの出力など）は、A-0-4 では補完しない。Phase B-4 の構造化要約書き換えで本文から抽出した正式タイトルを `title` として書き込むため、ここでは `genre` のみ整備すれば十分。
+   `title` フィールドが既存 frontmatter に欠けている場合（Web Clipper の `tags: ["clippings"]` のみの出力など）は、A-0-4 では補完しない。Phase B-4 の frontmatter 整備で本文から抽出した正式タイトルを `title` として書き込むため、ここでは `genre` のみ整備すれば十分。
 
    **frontmatter なしの場合** — `Edit` で冒頭に YAML ブロックを新規挿入:
    ```yaml
@@ -126,7 +131,7 @@ A-0-1 fast path で確定したファイル、および A-0-3 で自動振り分
    created: <today>
    ---
    ```
-   残りのフィールド（`type` / `source_url` / `source_kind` / `fetched_at` / `updated` 等）は Phase B-4 で構造化要約に置き換える際にまとめて整備する。`title` も B-4 で本文から抽出した正式タイトルが得られたら、Edit で上書きしてよい（A-0-4 の暫定値より B-4 の抽出値を優先する）。
+   残りのフィールド（`type` / `source_url` / `source_kind` / `fetched_at` / `generated_pages` / `updated` 等）は Phase B-4 の frontmatter 整備でまとめて整える（本文 raw は触らない）。`title` も B-4 で本文から抽出した正式タイトルが得られたら、Edit で上書きしてよい（A-0-4 の暫定値より B-4 の抽出値を優先する）。
 
 ### A-0-5. Phase B への合流とトランザクション境界
 
@@ -183,7 +188,7 @@ tags:
 
 ## Phase B: コンパイル
 
-Wiki ページを生成・更新し、最後に `type: source-summary` を立てて完了印とする段階。
+Wiki ページを生成・更新し、最後に `type: source` を立てて完了印とする段階。
 
 ### B-1. 既存 Wiki 状態の把握
 
@@ -208,54 +213,40 @@ Wiki ページを生成・更新し、最後に `type: source-summary` を立て
 
 **1ソース → 複数ページ更新は正常**。既存ページとの接点を積極的に見つけて相互リンクを増やす。
 
-### B-4. ソースファイルを source-summary 形式に書き換え（type は未設定のまま）
+### B-4. ソースの frontmatter を整える（本文 raw は不変・type は未設定のまま）
 
-`sources/<genre>/<slug>.md` の本文と frontmatter を構造化要約に置き換える。**ただし `type: source-summary` フィールドはまだ立てない**（B-6 完了印として B-6 末尾で立てる）。frontmatter は次の形:
+**ソース本文は raw 原文のまま保持する。要約への書き換えは一切行わない**（Karpathy 原典準拠。実装サンプル・コード・図表など、要約で失われる情報を温存するため）。この段階で行うのは **frontmatter のメタ整備のみ**。**ただし `type: source` フィールドはまだ立てない**（B-6 完了印として B-6 末尾で立てる）。frontmatter は次の形に整える:
 
 ```yaml
 ---
-title: "<ソースタイトル>"
+title: "<ソースタイトル>"      # 本文から抽出した正式タイトル（A-0-4 の暫定値より優先）
 genre: <genre>
-type: source-summary       # ← Phase B 完了印。B-4 では未設定のままとし、B-6 の log 追記の直前にここを書き換えて立てる
+type: source               # ← Phase B 完了印。B-4 では未設定のままとし、B-6 の log 追記の直前にここを書き換えて立てる
 source_url: "<URLまたは原本パス>"
-source_kind: web | pdf | book | article | code
+source_kind: web | pdf | book | article | code | note
 author:
   - "[[著者名]]"           # 任意
 published: <YYYY-MM-DD>    # 任意
 fetched_at: <YYYY-MM-DD>
+generated_pages:           # このソースから生成/更新した wiki ページ（B-3 の結果を転記）
+  - "[[ページA]]"          # 新規/更新/分割を問わず、接点を持った wiki ページを列挙
+  - "[[ページB]]"
 created: <today>
 updated: <today>
 tags:
   - "clippings"            # 元の Web Clipper 由来なら維持
 ---
 
-# <ソースタイトル>
-
-## 出典
-
-<著者・媒体・公開日など>
-
-## 要約
-
-<3〜10行程度の要約>
-
-## 主要トピック
-
-- [[Wikiページ1]]
-- [[Wikiページ2]]
-
-## 引用・キーフレーズ
-
-> <重要な引用>
-
-## ソースから生成・更新したWikiページ
-
-- [[ページ名]] — 新規 / 更新 / 分割
-
-## 元コンテンツ（要旨）
-
-<本文の要旨。長文クリッピングはここに圧縮して保持>
+<取得した原文をそのまま。1 文字も要約・圧縮しない>
 ```
+
+ポイント:
+
+- **本文は触らない**。A-4 / A-0 で保存した raw 原文をそのまま残す。frontmatter ブロックのみ `Edit` で整備する。
+- **`generated_pages`** に B-3 で生成・更新した wiki ページを `[[...]]` で列挙する（旧仕様の本文「## ソースから生成・更新したWikiページ」節に相当する追跡情報を、本文ではなく frontmatter に持たせる）。recompile はこのフィールドを参照して再コンパイル対象ページを特定する。
+- **要約・引用・主要トピックは wiki ページ側に書く**。ソースには残さない。query が一次情報・正確な引用・原文を必要とするときは、この raw 本文を直接読む。
+
+> **実装サンプル/コードの扱い（重要）**: ソースに含まれる実装サンプル・コードブロックのうち再利用価値が高いものは、B-3 で該当 wiki ページに**逐語（verbatim）で転記**する（要約・省略しない）。ソース側は raw 全文が残るため二重に保全される。
 
 ### B-5. `_overview.md` の更新判定（条件付きで実行）
 
@@ -295,7 +286,7 @@ tags:
    - 追記フォーマット・カテゴリ振り分けルール・「## 未分類」の扱いは [conventions.md](conventions.md) の「ジャンル index (`index.md`)」セクションが正典
    - サマリは B-2 の要点抽出から生成する
    - 新カテゴリを追加する場合、B-5 で `_overview.md` を更新したならそれと整合させる
-2. ソース source-summary の frontmatter に `type: source-summary` を追加（B-4 で書き換えた本文は既にこの形式に整っており、`type` の 1 行を追加するだけ）
+2. ソースの frontmatter に `type: source` を追加（B-4 で整えた raw 本文はそのまま、frontmatter に `type` の 1 行を追加するだけ）
 3. `$WIKI_ROOT/wiki/<genre>/log.md` に追記:
 
 ```markdown
@@ -310,9 +301,9 @@ tags:
 
 **Phase B の最終アクション順序は「index 更新 → type 立て → log 追記」とする**。これにより以下が両立する:
 
-- `type: source-summary` あり + log エントリあり = 完全に完了
-- `type: source-summary` なし = 未取り込み（Web Clipper raw / 手動ノート / Phase B 失敗のいずれも検出される）
-- `type: source-summary` あり + log エントリなし = 異常状態（type 立て後に log 追記で失敗）。lint で検出可
+- `type: source`（または旧 `source-summary`）あり + log エントリあり = 完全に完了
+- `type` が取り込み済み値でない = 未取り込み（Web Clipper raw / 手動ノート / Phase B 失敗のいずれも検出される）
+- `type: source` あり + log エントリなし = 異常状態（type 立て後に log 追記で失敗）。lint で検出可
 
 ## 冪等性ルール
 
@@ -324,12 +315,12 @@ tags:
 | A-0-4 step 4 (mv) 完了後・step 5 (frontmatter 整備) 失敗 | 移動済みだが `genre` フィールドが未追記の状態 | genre_targets として再検出され、Phase B-4 の frontmatter 全面書き換えで吸収される（B-4 のテンプレートが `genre` を必ず含むため復旧可） |
 | Phase A 途中失敗 | 部分ファイルが残るか未作成 | 引数なし `/llm-wiki ingest` で再検出される |
 | B-3 で Wiki ページ部分作成 | 部分ページあり、ソース `type` 未設定 | 引数なし再実行で B-1 から再走。既存ページは「更新」ルートで処理 |
-| B-4 で書き換え失敗 | ソースは生のまま、`type` 未設定 | 同上 |
+| B-4 で frontmatter 整備失敗 | ソース本文は raw のまま、`type` 未設定 | 同上 |
 | B-5 で `_overview.md` 更新失敗 | `_overview.md` 部分編集の可能性、`type` 未設定 | 同上（再実行で B-5 から再走） |
 | B-6 の type 立て前で失敗 | `type` 未設定、log 未追記 | 同上（再実行で B-1 から再走） |
 | B-6 の type 立て後 / log 追記前で失敗 | `type` あり + log エントリなし（異常状態） | lint で検出 → ユーザーに log を補完してもらう |
 
-**設計原則**: `type: source-summary` を立てるのは B-6 の中で **index 更新が終わり、log 追記の直前** に行う。これより前のステップで type を立ててはいけない（途中失敗時の再検出を可能にするため）。
+**設計原則**: `type: source` を立てるのは B-6 の中で **index 更新が終わり、log 追記の直前** に行う。これより前のステップで type を立ててはいけない（途中失敗時の再検出を可能にするため）。
 
 ## 部分作成された Wiki ページの扱い
 
@@ -350,12 +341,12 @@ Phase B が B-3 の途中で失敗したケースでは、新ページの一部�
 - 取り込んだソース（パス）
 - 影響したジャンル
 - 新規 / 更新 / 分割 した Wiki ページのリスト
-- 要レビュー事項（曖昧だった判定など。A-0-1 で `type: source-summary` 異常状態として残置されたファイル、および A-0-3 で確信度「中」「低」で自動振り分けされたファイルをここに列挙）
+- 要レビュー事項（曖昧だった判定など。A-0-1 で `type: source`/`source-summary` 異常状態として残置されたファイル、および A-0-3 で確信度「中」「低」で自動振り分けされたファイルをここに列挙）
 - スキャンモード時は処理した件数とスキップした件数
 
 ### A-0 triage の追加項目（A-0 が走った場合のみ）
 
 - triage 対象件数（`inbox/` 内検出件数）
-- 振り分け結果の内訳: 既存ジャンルへ自動振り分け / 新ジャンル自動作成 + 移動 / fast path 直行 / 異常状態で残置（A-0-1 の `type: source-summary` 既設） / 処理中失敗で残置（A-0-2 判定中の Read エラー等）
+- 振り分け結果の内訳: 既存ジャンルへ自動振り分け / 新ジャンル自動作成 + 移動 / fast path 直行 / 異常状態で残置（A-0-1 の `type: source`/`source-summary` 既設） / 処理中失敗で残置（A-0-2 判定中の Read エラー等）
 - 新規作成したジャンルのスラッグ一覧（init 経由）
 - **全ファイル**のジャンル判定根拠を 1 行ずつ列挙（`<ファイル名> → <採用ジャンル> [<確信度>]: <判定根拠>` 形式）。確信度に関わらず必ず全件記載し、後から人間が振り分けの妥当性を検証できるようにする
