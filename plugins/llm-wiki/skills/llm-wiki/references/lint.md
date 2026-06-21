@@ -1,6 +1,6 @@
 # lint — Vault 健全性チェック
 
-`lint` は Vault を読み取り、5 つの観点で問題候補を検出し、修正案を **proposals** として `_proposals/` に書き出す。観点 5 は内部的に 5a / 5b に分かれるため、lint 起点の kind は合計 6 種類（curiosity 起点 3 種類と合わせると全 9 種類。詳細は [proposals.md](proposals.md) の「kind 一覧」を参照）。修正の反映はユーザーの対話的レビューを経て行う。
+`lint` は Vault を読み取り、6 つの観点で問題候補を検出し、修正案を **proposals** として `_proposals/` に書き出す。観点 5 は内部的に 5a / 5b に分かれるため、lint 起点の kind は合計 7 種類（curiosity 起点 3 種類と合わせると全 10 種類。詳細は [proposals.md](proposals.md) の「kind 一覧」を参照）。修正の反映はユーザーの対話的レビューを経て行う。
 
 引数で対象を絞れる: `lint <genre>` でジャンル限定、引数なしで Vault 全体。
 
@@ -16,7 +16,7 @@ pending リマインド → 検出 → 修正案生成 → `_proposals/` に書�
 
 `yes` を選んだら [proposals.md](proposals.md) の対話的レビューフローを起動し、レビュー完了後に検出 (Phase 1) へ進むかユーザーに再確認する。
 
-検出対象には `_proposals/` 配下のファイルは含めない（pending 提案そのものを lint の検出対象にしないため）。各検出ロジックは `wiki/<genre>/*.md` を対象とし、`wiki/<genre>/_proposals/**` は走査対象外。
+検出対象には `_proposals/` 配下のファイルは含めない（pending 提案そのものを lint の検出対象にしないため）。各検出ロジックは `wiki/<genre>/*.md` を対象とし、`wiki/<genre>/_proposals/**` は走査対象外。**ただし観点 6（取り込み完了状態の不整合）のみ `sources/<genre>/*.md` を走査対象に含む**（後述）。
 
 ## チェック項目
 
@@ -128,6 +128,25 @@ pending リマインド → 検出 → 修正案生成 → `_proposals/` に書�
 - `confidence: low`
 - 提案内容: 両ページの `## 関連ページ` セクションへの相互リンク追記案、および `related` フィールドの更新案。誤検知前提なのでユーザーの判断必須
 
+### 6. 取り込み完了状態の不整合（Source completion integrity）
+
+ingest は最終処理（Phase B-6）を「index 更新 → `type` 立て → log 追記」の順で行う。`type: source` を立てた直後・log 追記前に失敗すると、**完了マーカーは立っているのに log エントリが無い**中途半端なソースが残る。ingest はこれを完了扱いでスキップして自動回復しないため、放置すると恒久化する。この状態を検出する（[ingest.md](ingest.md) の「Phase B の最終アクション順序」「冪等性ルール」で `lint で検出` と参照される観点）。
+
+- 対象: `sources/<genre>/*.md`（他観点と異なり sources を走査）
+- 検出方法:
+  1. `Glob "$WIKI_ROOT/sources/*/*.md"` でソース一覧を収集
+  2. frontmatter `type` が取り込み済み値（`source` または旧 `source-summary`）のものに絞る
+  3. 各ソースについて `wiki/<genre>/log.md` を Read し、当該ソースへの参照 `[[sources/<genre>/<slug>]]` を含む ingest / save エントリが存在するか確認
+  4. 存在しないものを「取り込み未完了（`type` 済み × log エントリなし）」として報告
+- 補足: ingest の**未取り込み判定**は frontmatter の `type` のみで行い log grep に依存しない（[conventions.md](conventions.md) の方針）。本観点は逆に「完了印は立っているが完了記録が欠けている」整合性を検査する目的なので、log.md との突き合わせを行う。両者は役割が異なり棲み分けは矛盾しない
+
+**proposals 生成**:
+
+- `kind: ingest-incomplete`
+- `risk_flags: [judgment-required]`
+- `confidence: medium`
+- 提案内容: 対象ソースの frontmatter `generated_pages` を読み、log.md に補うべき ingest エントリ案を書く。`generated_pages` があればそれを「新規 / 更新」として転記。空または未設定なら生成ページを特定できないため `/llm-wiki recompile <パス>` の実行を推奨する旨を明記する（apply 時の挙動は [proposals.md](proposals.md) の「kind 別の処理」を参照）
+
 ## proposals の書き出し
 
 各検出項目で生成した proposals を `_proposals/` に書き出す:
@@ -159,6 +178,7 @@ proposals 書き出しの後、サマリレポートをコンソールに出力:
 | 4. 古い情報候補 | <n> | <n> 件 (judgment-required) |
 | 5a. 欠落リンク候補 | <n> | <n> 件 (リスクなし) |
 | 5b. 関連性候補 | <n> | <n> 件 (low-precision) |
+| 6. 取り込み未完了候補 | <n> | <n> 件 (judgment-required) |
 
 ## ジャンル別 proposals 配置
 

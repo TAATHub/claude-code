@@ -303,7 +303,7 @@ tags:
 
 - `type: source`（または旧 `source-summary`）あり + log エントリあり = 完全に完了
 - `type` が取り込み済み値でない = 未取り込み（Web Clipper raw / 手動ノート / Phase B 失敗のいずれも検出される）
-- `type: source` あり + log エントリなし = 異常状態（type 立て後に log 追記で失敗）。lint で検出可
+- `type: source` あり + log エントリなし = 異常状態（type 立て後に log 追記で失敗）。[lint.md](lint.md) の観点 6（取り込み完了状態の不整合）で検出可
 
 ## 冪等性ルール
 
@@ -318,7 +318,7 @@ tags:
 | B-4 で frontmatter 整備失敗 | ソース本文は raw のまま、`type` 未設定 | 同上 |
 | B-5 で `_overview.md` 更新失敗 | `_overview.md` 部分編集の可能性、`type` 未設定 | 同上（再実行で B-5 から再走） |
 | B-6 の type 立て前で失敗 | `type` 未設定、log 未追記 | 同上（再実行で B-1 から再走） |
-| B-6 の type 立て後 / log 追記前で失敗 | `type` あり + log エントリなし（異常状態） | lint で検出 → ユーザーに log を補完してもらう |
+| B-6 の type 立て後 / log 追記前で失敗 | `type` あり + log エントリなし（異常状態） | [lint.md](lint.md) の観点 6 で検出 → ユーザーに log を補完してもらう |
 
 **設計原則**: `type: source` を立てるのは B-6 の中で **index 更新が終わり、log 追記の直前** に行う。これより前のステップで type を立ててはいけない（途中失敗時の再検出を可能にするため）。
 
