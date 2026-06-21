@@ -80,7 +80,7 @@ updated: YYYY-MM-DD
 | 取り込み済み（raw） | `type: source` | コンパイル完了。本文は raw 原文。再処理したい場合は `recompile` |
 | 取り込み済み（旧要約） | `type: source-summary` | 旧仕様で要約済み。完了状態として有効。再処理は `recompile` |
 
-検出は frontmatter のこのフィールド 1 つで判定する。`log.md` の文字列 grep に依存しない（Unicode 正規化や引用符差異の問題を避けるため）。
+検出は frontmatter のこのフィールド 1 つで判定する。`log.md` の文字列 grep に依存しない（Unicode 正規化や引用符差異の問題を避けるため）。なお「完了印（`type`）は立っているのに `log.md` に取り込み記録が欠ける」整合性チェックは別途 [lint.md](lint.md) の観点 6（取り込み完了状態の不整合）が担う（こちらは目的が異なるため log との突き合わせを行う）。
 
 #### 未取り込みファイルが取りうる形
 

@@ -130,13 +130,13 @@ pending リマインド → 検出 → 修正案生成 → `_proposals/` に書�
 
 ### 6. 取り込み完了状態の不整合（Source completion integrity）
 
-ingest は最終処理（Phase B-6）を「index 更新 → `type` 立て → log 追記」の順で行う。`type: source` を立てた直後・log 追記前に失敗すると、**完了マーカーは立っているのに log エントリが無い**中途半端なソースが残る。ingest はこれを完了扱いでスキップして自動回復しないため、放置すると恒久化する。この状態を検出する（[ingest.md](ingest.md) の「Phase B の最終アクション順序」「冪等性ルール」で `lint で検出` と参照される観点）。
+ingest は最終処理（Phase B-6）を「index 更新 → `type` 立て → log 追記」の順で行う。`type: source` を立てた直後・log 追記前に失敗すると、**完了マーカーは立っているのに log エントリが無い**中途半端なソースが残る。ingest はこれを完了扱いでスキップして自動回復しないため、放置すると恒久化する。この状態を検出する。なお [ingest.md](ingest.md) の「Phase B の最終アクション順序」「冪等性ルール」が本観点を「観点 6 で検出」として参照している。
 
-- 対象: `sources/<genre>/*.md`（他観点と異なり sources を走査）
+- 対象: `sources/<genre>/*.md`（他観点と異なり sources を走査）。`lint <genre>` でジャンル限定実行時は当該ジャンルの `sources/<genre>/*.md` のみ、引数なしは全ジャンル `sources/*/*.md` を対象とする
 - 検出方法:
-  1. `Glob "$WIKI_ROOT/sources/*/*.md"` でソース一覧を収集
+  1. `Glob` でソース一覧を収集（ジャンル限定時は `$WIKI_ROOT/sources/<genre>/*.md`、全体時は `$WIKI_ROOT/sources/*/*.md`）。各ソースのパス第 1 階層を `<genre>` とし、突き合わせ先は同 genre の `wiki/<genre>/log.md` とする
   2. frontmatter `type` が取り込み済み値（`source` または旧 `source-summary`）のものに絞る
-  3. 各ソースについて `wiki/<genre>/log.md` を Read し、当該ソースへの参照 `[[sources/<genre>/<slug>]]` を含む ingest / save エントリが存在するか確認
+  3. `wiki/<genre>/log.md` を Read し、当該ソースファイルを参照する取り込み証跡エントリが存在するか確認する。**行頭が `- ingest:` / `- save:` / `- recompile:` のいずれかで、当該ソースへの wikilink `[[sources/<genre>/<file>]]` を含む行**があれば一致とみなす（`（会話由来）` 等の後続注記は無視。`recompile:` も「ソースが log に記録済み」の証跡として扱う）。ここで `<file>` は Glob で得たソースのファイル名から拡張子 `.md` を除いた slug を指す（wikilink は拡張子を含まないため、比較時に揃える）
   4. 存在しないものを「取り込み未完了（`type` 済み × log エントリなし）」として報告
 - 補足: ingest の**未取り込み判定**は frontmatter の `type` のみで行い log grep に依存しない（[conventions.md](conventions.md) の方針）。本観点は逆に「完了印は立っているが完了記録が欠けている」整合性を検査する目的なので、log.md との突き合わせを行う。両者は役割が異なり棲み分けは矛盾しない
 
@@ -145,7 +145,7 @@ ingest は最終処理（Phase B-6）を「index 更新 → `type` 立て → lo
 - `kind: ingest-incomplete`
 - `risk_flags: [judgment-required]`
 - `confidence: medium`
-- 提案内容: 対象ソースの frontmatter `generated_pages` を読み、log.md に補うべき ingest エントリ案を書く。`generated_pages` があればそれを「新規 / 更新」として転記。空または未設定なら生成ページを特定できないため `/llm-wiki recompile <パス>` の実行を推奨する旨を明記する（apply 時の挙動は [proposals.md](proposals.md) の「kind 別の処理」を参照）
+- 提案内容: 対象ソースの frontmatter `generated_pages` を読み、log.md に補うべきエントリ案を書く。`generated_pages` があれば log 形式に転記する。空または未設定なら生成ページを特定できないため `/llm-wiki recompile <パス>` の実行を推奨する旨を明記する。log フォーマット（`ingest:` / `save:` の選択と転記）および apply 時の挙動は [proposals.md](proposals.md) の「kind 別の処理」を正典として参照する
 
 ## proposals の書き出し
 
@@ -178,7 +178,7 @@ proposals 書き出しの後、サマリレポートをコンソールに出力:
 | 4. 古い情報候補 | <n> | <n> 件 (judgment-required) |
 | 5a. 欠落リンク候補 | <n> | <n> 件 (リスクなし) |
 | 5b. 関連性候補 | <n> | <n> 件 (low-precision) |
-| 6. 取り込み未完了候補 | <n> | <n> 件 (judgment-required) |
+| 6. 取り込み不整合候補 | <n> | <n> 件 (judgment-required) |
 
 ## ジャンル別 proposals 配置
 
