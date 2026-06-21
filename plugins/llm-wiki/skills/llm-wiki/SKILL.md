@@ -18,7 +18,7 @@ allowed-tools:
 
 # LLM Wiki
 
-Andrej Karpathy が提唱する「LLM Wiki」を Obsidian Vault 上に構築・維持するスキル。ソース原本を変更せず、要約とWikiページの相互リンクで知識を蓄積していく。
+Andrej Karpathy が提唱する「LLM Wiki」を Obsidian Vault 上に構築・維持するスキル。ソースは **raw 原文のまま保持**し（原典の immutable な raw sources レイヤーに相当）、要約・知識の構造化は Wiki ページ側が担う。両者を相互リンクで結び知識を蓄積していく。
 
 ## Vault パス（要設定）
 
@@ -60,7 +60,7 @@ Andrej Karpathy が提唱する「LLM Wiki」を Obsidian Vault 上に構築・�
 │   │   ├── applied/        # apply 済みアーカイブ
 │   │   └── rejected/       # reject 済みアーカイブ
 │   └── <ページ名>.md
-└── sources/<genre>/        # ジャンル確定済みソース要約（原本は別所在）
+└── sources/<genre>/        # ジャンル確定済みソースの raw 原文（本文は無加工、frontmatter にメタ付与）
 ```
 
 `inbox/` は `sources/<genre>/` とは独立した最上位ディレクトリで、`ingest` 実行時に triage（ジャンル振り分け）の対象として別扱いされる。Web Clipper の保存先をここに向ける運用を推奨。
@@ -81,7 +81,7 @@ Andrej Karpathy が提唱する「LLM Wiki」を Obsidian Vault 上に構築・�
 
 ## 取り込み状態の判定
 
-`sources/<genre>/<file>.md` の取り込み状態は **frontmatter の `type: source-summary` の有無** で判定する（`ingest` は未済を処理、`recompile` は済を再処理）。詳細は [references/conventions.md](references/conventions.md) の「`type: source-summary` はコンパイル完了マーカー」セクション。
+`sources/<genre>/<file>.md` の取り込み状態は **frontmatter の `type`（`source` または旧 `source-summary`）の有無** で判定する（`ingest` は未済を処理、`recompile` は済を再処理）。詳細は [references/conventions.md](references/conventions.md) の「`type: source` はコンパイル完了マーカー」セクション。
 
 ## 共通ルール
 
@@ -116,6 +116,6 @@ Andrej Karpathy が提唱する「LLM Wiki」を Obsidian Vault 上に構築・�
 ## 安全側の方針
 
 - **自動コミットしない**: Vaultが Git管理下でも、git操作はユーザーが明示的に指示した場合のみ。
-- **ソース原本は変更不可**: `sources/` には要約とメタデータのみ保存し、原本ファイルは触らない。
+- **ソース raw 本文は変更不可**: `sources/` には取得した原文をそのまま保持する。更新してよいのは frontmatter メタのみで、本文テキストは要約・改変しない。
 - **破壊的操作の前確認**: ページ削除・大規模リネームはユーザー確認を取ってから実施。
 - **日付は実時刻**: frontmatter の `created`/`updated` や log エントリは Bash の `date` コマンドで取得した値を使う。
