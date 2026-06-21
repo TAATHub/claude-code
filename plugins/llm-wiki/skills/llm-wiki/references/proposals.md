@@ -46,8 +46,8 @@ wiki/<genre>/_proposals/
 ---
 type: proposal
 origin: curiosity | lint
-kind: new-page | append | contradiction | contradiction-found | missing-page | stale-fix | link-fix | orphan-fix | weak-relation
-target: "[[対象ページ]]"        # 必ず wikilink でラップ。new-page / missing-page では「まだ作られていない新規候補ページ名」を `[[<候補名>]]` 形式で記載
+kind: new-page | append | contradiction | contradiction-found | missing-page | stale-fix | link-fix | orphan-fix | weak-relation | ingest-incomplete
+target: "[[対象ページ]]"        # 必ず wikilink でラップ。new-page / missing-page では「まだ作られていない新規候補ページ名」を `[[<候補名>]]` 形式で記載。ingest-incomplete では対象ソース `[[sources/<genre>/<file>]]` を記載
 status: pending | applied | rejected
 risk_flags: []                    # 任意 (詳細は下記「必須・任意」)。空なら省略可
 confidence: high | medium | low
@@ -105,7 +105,7 @@ rejected: YYYY-MM-DD              # rejected/ に移動時にのみ追加
 
 **本セクションが kind の正典**。`curiosity.md` / `lint.md` は対応する kind を本表から参照する。新しい kind を追加する場合は必ずここから更新する。
 
-9 種類。`origin` 別の発生源と典型的な `risk_flags` を整理する。
+10 種類。`origin` 別の発生源と典型的な `risk_flags` を整理する。
 
 | kind | origin | 何を提案するか | typical risk_flags |
 |---|---|---|---|
@@ -118,6 +118,7 @@ rejected: YYYY-MM-DD              # rejected/ に移動時にのみ追加
 | `link-fix` | lint | lint 5a のベタテキスト → `[[ページ]]` 置換 | （なし） |
 | `orphan-fix` | lint | lint 2 の孤立ページに対するリンク元候補 | `judgment-required` |
 | `weak-relation` | lint | lint 5b のキーワード重複ベースの関連候補 | `low-precision` |
+| `ingest-incomplete` | lint | lint 6 の取り込み未完了ソース（`type` 済み × log エントリなし）の log 補完 | `judgment-required` |
 
 **confidence の初期値の目安**:
 - `link-fix`: `high` (機械的に判定可能)
@@ -181,6 +182,7 @@ rejected: YYYY-MM-DD              # rejected/ に移動時にのみ追加
 | `link-fix` | 対象ファイル内の該当ベタテキストを `[[<ページ>]]` に Edit で置換 (位置情報 `<file>:<line>` は提案ファイルの参照情報。Edit は old_string/new_string マッチングで実行) |
 | `orphan-fix` | リンク元候補ページの `## 関連ページ` セクションに `- [[<孤立ページ>]] — <理由>` を追記。frontmatter の `related` にも追加 |
 | `weak-relation` | 両ページの `## 関連ページ` セクションに相互リンクを追記。frontmatter の `related` も両方更新。なお `low-precision` リスクのため reject されるケースが多い前提だが、apply された場合の処理は本行通り |
+| `ingest-incomplete` | 対象ソースの `generated_pages` を `wiki/<genre>/log.md` に補う。log の動詞はソースの `source_kind` で選ぶ（`conversation` なら [save.md](save.md) Step 8 の `- save: [[...]]（会話由来）` 形式、それ以外は [ingest.md](ingest.md) B-6 の `- ingest: [[...]]` 形式）。サブ項目（新規 / 更新 / 分割など、選んだ正典のログ例に従う）は generated_pages を各正典フォーマットに転記する（フォーマット文字列は再定義せず両正典に従う）。`generated_pages` が空/未設定なら生成ページを特定できないため log は補完せず「`/llm-wiki recompile <パス>` で再特定」を案内する。**共通処理の例外**: (a) log 追記は本処理が担うため共通処理側の log 追記は二重に行わない、(b) `updated` は対象ソース frontmatter を today にする（target が wiki ページではなくソースのため）、(c) recompile 案内のみで終え log 未補完だった場合は `applied` にせず `pending` のまま残す |
 
 ### 既存ページの構造尊重
 
