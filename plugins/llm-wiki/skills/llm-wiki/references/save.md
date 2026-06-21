@@ -98,8 +98,7 @@ genre: <genre>
 source_url: "claude-code-session"
 source_kind: conversation
 fetched_at: <today>
-generated_pages:        # Step 6 で生成/更新した wiki ページ（Step 8 で確定。初期は空）
-  - "[[ページA]]"
+generated_pages: []     # Step 6 で生成/更新した wiki ページを Step 8 で列挙（Step 5 時点では空配列のまま）
 created: <today>
 updated: <today>
 ---

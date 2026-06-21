@@ -6,7 +6,7 @@
 
 > **ソースは raw 原文を保持する（Karpathy 原典準拠）**。ingest はソース本文を**要約に書き換えない**。`sources/<genre>/` には取得した原文をそのまま残し、frontmatter にメタ（`type` / `source_url` / `generated_pages` 等）のみを付与する。要約・知識の構造化は **wiki ページ側**が担う。`type: source` は「raw 原文 + メタ付与済み」の完了マーカー。
 >
-> 旧仕様で要約済みの `type: source-summary` ファイルも有効な完了状態として扱う（再取り込みはしない）。検出・recompile・lint はいずれも `source` と `source-summary` の両方を「取り込み済み」とみなす。
+> 旧仕様で要約済みの `type: source-summary` ファイルも有効な完了状態として扱う（再取り込みはしない）。未取り込み検出（ingest）と recompile はいずれも `source` と `source-summary` の両方を「取り込み済み」とみなす。
 
 ## 検出方式
 

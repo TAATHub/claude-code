@@ -61,6 +61,15 @@ updated: YYYY-MM-DD
 | `conversation` | Claude Code との対話セッション（`/llm-wiki save` 由来） |
 | `note` | ユーザー手動作成のメモ |
 
+### `generated_pages` フィールド
+
+`source` / `source-summary` で使う、**このソースから生成・更新した wiki ページの追跡フィールド**。
+
+- 値: そのソースが接点を持った wiki ページを `[[...]]` で列挙する（新規 / 更新 / 分割を問わず、Phase B-3 で触れた全ページ）
+- 役割: 旧仕様の本文「## ソースから生成・更新したWikiページ」節に相当する情報を frontmatter に持たせたもの。`recompile` はこのフィールドを参照して再コンパイル対象ページを特定する（正典の追跡元）
+- wiki ページ側の `sources:` フィールドと**逆向きの対**をなす（source→page が `generated_pages`、page→source が `sources`）。理想的には両者が相互に整合する
+- 旧 `type: source-summary` ファイルでは本文「## ソースから生成・更新したWikiページ」節が等価物。`generated_pages` が未設定なら本文セクションをフォールバック参照する
+
 ### `type: source` はコンパイル完了マーカー
 
 `sources/<genre>/` 配下のファイルにおいて **`type` が取り込み済み値（`source` または旧 `source-summary`）かどうかが ingest 完了状態を表す唯一の真実**。新規 ingest は raw 原文を保持して `type: source` を立てる。`type: source-summary` は旧仕様の要約済みファイルで、完了状態としてそのまま有効（再取り込みはしない）。
