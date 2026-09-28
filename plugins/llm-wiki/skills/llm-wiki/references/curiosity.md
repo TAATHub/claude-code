@@ -189,9 +189,9 @@ curiosity 起点の `new-page` / `append` / `contradiction` の典型的な risk
 
 Phase 5 で書き出した proposals に対して、[proposals.md](proposals.md) の「対話的レビューフロー」を起動する。フローの詳細（3 ステップの構成・選択肢・アイコン表示）は proposals.md を参照。
 
-`later` を選んだ場合、次回 `curiosity` または `lint` 起動時の Phase 0 でリマインドされる。
+`later` を選んだ場合、次回 `curiosity` 起動時の Phase 0 でリマインドされる。なお次に `lint` が走ると、残った pending 提案は lint の Phase 0 で自動的に apply / reject される。
 
-なお curiosity 起点の kind (`new-page` / `append` / `contradiction`) はいずれも `risk_flags` 付きのため、`apply-all-safe` (リスクなし提案のみ一括 apply) は curiosity サイクルでは通常空振りになる。リスクなし提案を含むのは主に lint の `link-fix`。`apply-all-safe` は両動詞で共通のメニューとして提供するが、実用上は lint で活躍する。
+なお curiosity 起点の kind (`new-page` / `append` / `contradiction`) はいずれも `risk_flags` 付きのため、`apply-all-safe` (リスクなし提案のみ一括 apply) は curiosity サイクルでは通常空振りになる。リスクなし提案を含むのは主に lint の `link-fix`。lint は対話的レビューを使わず全提案を自動処理するため、`apply-all-safe` は curiosity のレビューメニューにのみ登場する。
 
 ## 完了レポート
 

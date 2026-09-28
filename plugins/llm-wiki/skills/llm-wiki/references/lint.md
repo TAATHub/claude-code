@@ -1,22 +1,31 @@
-# lint — Vault 健全性チェック
+# lint — Vault 健全性チェック + 自動修正 + 自動コミット
 
-`lint` は Vault を読み取り、6 つの観点で問題候補を検出し、修正案を **proposals** として `_proposals/` に書き出す。観点 5 は内部的に 5a / 5b に分かれるため、lint 起点の kind は合計 7 種類（curiosity 起点 3 種類と合わせると全 10 種類。詳細は [proposals.md](proposals.md) の「kind 一覧」を参照）。修正の反映はユーザーの対話的レビューを経て行う。
+`lint` は Vault を 6 つの観点で点検し、検出した問題を **自動で修正し、git にコミットする**。観点 5 は内部的に 5a / 5b に分かれるため、lint 起点の kind は合計 7 種類（curiosity 起点 3 種類と合わせると全 10 種類。詳細は [proposals.md](proposals.md) の「kind 一覧」を参照）。
+
+`curiosity` と異なり、lint は **対話的レビューを挟まない**。`risk_flags` の有無にかかわらず全観点を検出・修正し、1 回の lint 実行を 1 コミットにまとめる。修正が不適切だった場合はユーザーがコミットを revert して切り戻す前提で運用する。
 
 引数で対象を絞れる: `lint <genre>` でジャンル限定、引数なしで Vault 全体。
 
 ## 動作方針
 
-pending リマインド → 検出 → 修正案生成 → `_proposals/` に書き出し → 対話的レビュー、の 5 段で動作する。詳細は [proposals.md](proposals.md) を参照。
+pending 消化 → 検出 → 検証（critic）→ 自動修正 → 記録 → コミット → 完了レポート、の順で動作する。
 
-すべての検出項目を proposals 化する。検出ロジックが LLM 判断を含むもの・誤検知が多いものは `risk_flags` を付けてレビュー時にユーザーが判断できるようにする。
+- **全観点を実行する**。`hallucination-possible` / `judgment-required` / `low-precision` が付く観点もスキップしない
+- **自動修正の前に critic 検証を必ず通す**。検証は「原典（`sources/` の raw 本文・既存ページ本文）を実際に読んで裏付けが取れるか」で判定する。裏付けが取れない修正は反映せず reject として記録する（推測で埋めない）
+- **無人実行（スケジュール実行）でも挙動は同じ**。ユーザー確認を求めない
+- 修正記録は従来どおり proposal ファイルとして残す（`applied/` または `rejected/` に直接書き出す）。これが監査証跡となり、`risk_flags` も記録用に付与する
 
-## Phase 0: pending リマインド
+## Phase 0: pending 提案の消化
 
-実行冒頭で各ジャンルの `_proposals/` をスキャンし、pending な提案が残っていればユーザーに案内する。プロンプト文言と挙動の正典は [proposals.md](proposals.md) の「pending リマインド」セクション。
+実行冒頭で各ジャンルの `_proposals/` をスキャンし、pending な提案が残っていれば **lint 起点・curiosity 起点を問わず** 本ドキュメントの「自動修正」と同じ基準で critic 検証し、apply または reject する（ユーザーへのリマインドは行わない）。
 
-`yes` を選んだら [proposals.md](proposals.md) の対話的レビューフローを起動し、レビュー完了後に検出 (Phase 1) へ進むかユーザーに再確認する。
+検出対象には `_proposals/` 配下のファイルは含めない。各検出ロジックは `wiki/<genre>/*.md` を対象とし、`wiki/<genre>/_proposals/**` は走査対象外。**ただし観点 6（取り込み完了状態の不整合）のみ `sources/<genre>/*.md` を走査対象に含む**（後述）。
 
-検出対象には `_proposals/` 配下のファイルは含めない（pending 提案そのものを lint の検出対象にしないため）。各検出ロジックは `wiki/<genre>/*.md` を対象とし、`wiki/<genre>/_proposals/**` は走査対象外。**ただし観点 6（取り込み完了状態の不整合）のみ `sources/<genre>/*.md` を走査対象に含む**（後述）。
+## 共通の検出上の注意
+
+- **Unicode 正規化**: macOS / iCloud 上のファイル名は NFD（濁点・半濁点が分離）で返ることがある。ファイル名・wikilink・log 本文を比較する前に **すべて NFC に正規化**する。これを怠ると孤立ページ・取り込み不整合の誤検知が大量に出る
+- **wikilink の解決**: `[[名前]]` はファイル名（拡張子なし）に加え、frontmatter `aliases` でも解決される。パス付き `[[genre/名前]]`・見出し `[[名前#見出し]]`・表示名 `[[名前|表示]]` はファイル名部分で照合する
+- **大規模 Vault**: タイトル照合などの機械的検出はスクリプト（全タイトルを 1 本の正規表現に結合して 1 パス走査する等）で行う。タイトル数 × 行数の逐次ループは極端に遅い。スクリプトや中間ファイルはプロジェクト内の `.tmp/` に置く
 
 ## チェック項目
 
@@ -24,53 +33,51 @@ pending リマインド → 検出 → 修正案生成 → `_proposals/` に書�
 
 - ページAとページBで同一トピックについて矛盾する記述がないか
 - 数値・年代・定義の食い違いを優先
-- 検出方法: `Grep` で同じキーワードを含むページを集め、関連箇所を読み比べる
+- 検出方法: `Grep` で同じキーワードを含むページを集め、関連箇所を読み比べる。ページ数が多い場合はジャンル単位で subagent に分担させてよい
 
-**proposals 生成**:
+**自動修正**:
 
-- `kind: contradiction-found`
-- `risk_flags: [judgment-required]`
-- `confidence: medium`
-- 提案内容: 「両論併記」「ページAを更新」「ページBを更新」のいずれかを critic が推奨方針として書く（ただし最終判断はユーザー）
+- `kind: contradiction-found` / `risk_flags: [judgment-required]`
+- 両ページの `sources` の raw 本文を確認し、どちらが正しいかを判定する
+  - 片方が誤り（転記ミス・古い情報）と確定できる → 誤っている側を Edit で修正
+  - 時点の違い（例: 旧バージョンの仕様と新バージョンの仕様）→ 両ページに時点を明記
+  - 出典同士が食い違い判定不能 → 両ページに `## 補足` で両論併記し、それぞれの出典を示す
+- 原典を読めず判定できない場合は修正しない（reject として記録）
 
 ### 2. 孤立ページ（Orphans）
 
-- 他のどのページからも `[[該当ページ]]` でリンクされていないページ
-- ただし `_overview.md` `index.md` `log.md` は例外（リンクされなくても問題なし）
-- 検出方法: 全ページの `[[...]]` 出現と全ページのファイル名を集合演算
+- 他のどのページからも `[[該当ページ]]`（aliases 経由を含む）でリンクされていないページ
+- `_overview.md` `index.md` `log.md` は例外（リンクされなくても問題なし）。逆に、`index.md` / `log.md` からのリンクしかないページは孤立として扱う
+- 検出方法: 全ページの `[[...]]` 出現と全ページのファイル名・aliases を NFC 正規化したうえで集合演算
 
-**proposals 生成**:
+**自動修正**:
 
-- `kind: orphan-fix`
-- `risk_flags: [judgment-required]`
-- `confidence: medium`
-- 提案内容: critic が「リンク元として妥当な候補ページ」を 1〜3 個推奨する。ユーザーは候補から選ぶか、削除・統合を判断する
+- `kind: orphan-fix` / `risk_flags: [judgment-required]`
+- 内容が最も近いページを 1〜2 個選び、その `## 関連ページ` と frontmatter `related` にリンクを追記する。ジャンル内に適当な近接ページが無ければ、`_overview.md` の知識マップに配置する
 
 ### 3. 不足ページ（Missing pages）
 
 - 複数ページで頻繁に言及されているが、独立ページが存在しないコンセプト
-- 検出方法: 各ページから固有名詞・コンセプト名を抽出し、ファイル一覧と突き合わせ
-- 完璧な抽出は難しいので「3ページ以上で言及 × 独立ページなし」程度の閾値で報告
+- 「3 ページ以上で言及 × 独立ページなし」程度の閾値で検出
 
-**proposals 生成**:
+**自動修正**:
 
-- `kind: missing-page`
-- `risk_flags: [hallucination-possible]`（強）
-- `confidence: low` または `medium`
-- 提案内容: critic がコンセプトの定義・関連ページ・想定 sources を踏まえて新ページの本文ドラフトを書く。**幻覚リスクが特に高い** ため、提案ファイルに原本未参照の記述を含むことを明記する
+- `kind: missing-page` / `risk_flags: [hallucination-possible]`
+- 先に「独立ページ化する価値があるか」を判定する。既存ページに比較表や詳細節があり、そこが実質的な集約先になっているなら、新ページは作らず reject として記録する（重複ページを増やさない）
+- 作成する場合は、言及元ページとその `sources` の raw 本文を読み、**原典で裏付けが取れた記述だけで** ページを compile する。frontmatter `sources` には実際に参照したソースのみを列挙する
+- 作成後は `index.md` に追記し、言及元のうち 1〜数ページの `## 関連ページ` からリンクする（新ページを孤立させない）。必要なら `_overview.md` の知識マップも更新する
 
 ### 4. 古い情報（Stale）
 
 - frontmatter `updated` が古い × 新しいソースが取り込まれて関連知識が更新されている可能性
-- 検出方法: 各ページの `updated` と、その `sources` に含まれるソースの `updated` を比較
-- 1年以上更新されていないページは年単位で `updated` が古い旨を併記
+- 検出方法: 各ページの `updated` と、同トピックの新しいソースや関連ページの `updated` を比較
+- 1 年以上更新されていないページは、その旨を記録に併記する
 
-**proposals 生成**:
+**自動修正**:
 
-- `kind: stale-fix`
-- `risk_flags: [judgment-required]`
-- `confidence: medium`
-- 提案内容: critic が「どのセクションを、どう更新すべきか」の案を書く。recompile を推奨する場合もあり、その旨を併記
+- `kind: stale-fix` / `risk_flags: [judgment-required]`
+- 新しいソースの raw 本文で裏付けが取れた範囲だけ、該当セクションを Edit で部分更新する（ページ全体の書き換えはしない）。新ソースは `sources` に追加する
+- 更新範囲が広く、部分更新では済まない場合は `/llm-wiki recompile <パス>` を実行して再コンパイルする
 
 ### 5. 相互参照不足（Weak cross-references / Backlink audit）
 
@@ -78,138 +85,129 @@ pending リマインド → 検出 → 修正案生成 → `_proposals/` に書�
 
 #### 5a. タイトル文字列ベースの欠落リンク検出（高精度）
 
-「ベタテキストでページタイトルが出現しているのに `[[<タイトル>]]` 形式になっていない」ケースを機械的に検出する。誤検知が少ないため、**追加すべきリンクの主候補**として扱う。
+「ベタテキストでページタイトルが出現しているのに `[[<タイトル>]]` 形式になっていない」ケースを機械的に検出する。
 
 検出手順:
 
-1. 全 wiki ページのタイトル一覧を `Glob "$WIKI_ROOT/wiki/**/*.md"` から収集
-2. **タイトル長 4 文字以上**かつ **ブラックリスト未掲載** のものを audit 対象とする（誤検知抑制）
-3. ジャンルごとに対象タイトルをまとめ、batched Grep で 1 ジャンル 1 回の検索:
-   ```
-   Grep -E "(タイトル1|タイトル2|...)" wiki/<genre>/*.md -n -B 1 -A 1
-   ```
-4. クロスジャンル検出のため Vault 全体に対しても 1 回 batched Grep を回す
-5. Grep 出力から以下を **除外**:
-   - マッチ行が `#` で始まる（見出し）
-   - マッチ行を含むコードブロック内（前後の ` ``` ` フェンス検査）
-   - frontmatter 内（先頭〜2 番目の `---` ライン区間）
-   - マッチ行が `>` で始まる（blockquote）
+1. 全 wiki ページのタイトル一覧を `Glob "$WIKI_ROOT/wiki/**/*.md"` から収集（NFC 正規化）
+2. **タイトル長 4 文字以上**・**ブラックリスト未掲載**・**Vault 内で一意（複数ジャンルに同名ページが無い）** のものを対象とする
+3. 全タイトルを長い順に結合した 1 本の正規表現で、各ページを 1 パス走査する（`log.md` は追記専用のため対象外）
+4. 以下を **除外**:
+   - 見出し行（`#` 始まり）、blockquote（`>` 始まり）、コードブロック内、frontmatter 内
+   - 既存 wikilink・インラインコード・Markdown リンク・URL の内部
    - 同じファイルに既に `[[<タイトル>]]` が存在する
    - 自分自身のページ内のマッチ
-6. 残ったものを「明確な追加候補」としてリスト
+   - 英数字タイトルで、前後が英数字に接している（単語の一部）
+   - カタカナ・漢字タイトルで、前後がカタカナ・漢字に接している（複合語の一部。例: 「レコメンドアルゴリズム」中の「アルゴリズム」、「AI コードレビューエージェント」中の「コードレビュー」）。中黒 `・` は区切りとして扱い、除外の対象にしない
+5. 1 ファイル × 1 タイトルにつき最初の 1 箇所だけをリンク化する
 
-タイトルが短い／一般的すぎるものは検出しない。例:
+ブラックリスト（一般語すぎて誤リンクが多いもの）:
 
 ```
-# audit 対象外（タイトル短すぎ・一般語）
-- 3 文字以下: Go, Web, AI（誤検知が多すぎる）
-- ブラックリスト: データ, システム, 概要（一般語）
+データ, システム, 概要, アルゴリズム
 ```
 
-**proposals 生成**:
+**自動修正**:
 
-- `kind: link-fix`
-- `risk_flags: []`（リスクなし）
-- `confidence: high`
-- 提案内容: 対象ファイル `<file>:<line>` のベタテキストを `[[<ページ>]]` に置換する単純な差分。`risk_flags` 空のため、対話的レビューの `apply-all-safe` で一括反映される対象
+- `kind: link-fix` / `risk_flags: []` / `confidence: high`
+- 対象ファイル `<file>:<line>` のベタテキストを `[[<ページ>]]` に置換する
 
 #### 5b. キーワード重複度ベースの関連性検出（低精度・補完用）
 
 タイトル一致しなくても、内容上明らかに関連するペアを補完的に拾う。
 
 - 各ページから主要キーワード（固有名詞・専門用語）を抽出
-- `related` 不在のペアの中で、キーワード重複度が閾値以上のものを「弱い候補」としてリスト
+- `related` 不在のペア、または片方向リンクしかないペアの中で、キーワード重複度が閾値以上のものを候補とする
 - 5a で既に検出されているペアは除外（重複報告を避ける）
 
-**proposals 生成**:
+**自動修正**:
 
-- `kind: weak-relation`
-- `risk_flags: [low-precision]`
-- `confidence: low`
-- 提案内容: 両ページの `## 関連ページ` セクションへの相互リンク追記案、および `related` フィールドの更新案。誤検知前提なのでユーザーの判断必須
+- `kind: weak-relation` / `risk_flags: [low-precision]`
+- 両ページを読み、関連が実質的か（同じ問題を扱う・対になる・一方が他方の前提）を critic 判定する。実質的なら両ページの `## 関連ページ` と `related` に相互リンクを追記し、関連の理由を一言添える。キーワードが偶然重なっただけなら reject として記録する
 
 ### 6. 取り込み完了状態の不整合（Source completion integrity）
 
 ingest は最終処理（Phase B-6）を「index 更新 → `type` 立て → log 追記」の順で行う。`type: source` を立てた直後・log 追記前に失敗すると、**完了マーカーは立っているのに log エントリが無い**中途半端なソースが残る。ingest はこれを完了扱いでスキップして自動回復しないため、放置すると恒久化する。この状態を検出する。なお [ingest.md](ingest.md) の「Phase B の最終アクション順序」「冪等性ルール」が本観点を「観点 6 で検出」として参照している。
 
-- 対象: `sources/<genre>/*.md`（他観点と異なり sources を走査）。`lint <genre>` でジャンル限定実行時は当該ジャンルの `sources/<genre>/*.md` のみ、引数なしは全ジャンル `sources/*/*.md` を対象とする
+- 対象: `sources/<genre>/*.md`（他観点と異なり sources を走査）。`lint <genre>` でジャンル限定実行時は当該ジャンルのみ、引数なしは全ジャンル
 - 検出方法:
-  1. `Glob` でソース一覧を収集（ジャンル限定時は `$WIKI_ROOT/sources/<genre>/*.md`、全体時は `$WIKI_ROOT/sources/*/*.md`）。各ソースのパス第 1 階層を `<genre>` とし、突き合わせ先は同 genre の `wiki/<genre>/log.md` とする
-  2. frontmatter `type` が取り込み済み値（`source` または旧 `source-summary`）のものに絞る
-  3. `wiki/<genre>/log.md` を Read し、当該ソースファイルを参照する取り込み証跡エントリが存在するか確認する。**行頭が `- ingest:` / `- save:` / `- recompile:` のいずれかで、当該ソースへの wikilink `[[sources/<genre>/<file>]]` を含む行**があれば一致とみなす（`（会話由来）` 等の後続注記は無視。`recompile:` も「ソースが log に記録済み」の証跡として扱う）。ここで `<file>` は Glob で得たソースのファイル名から拡張子 `.md` を除いた slug を指す（wikilink は拡張子を含まないため、比較時に揃える）
-  4. 存在しないものを「取り込み未完了（`type` 済み × log エントリなし）」として報告
-- 補足: ingest の**未取り込み判定**は frontmatter の `type` のみで行い log grep に依存しない（[conventions.md](conventions.md) の方針）。本観点は逆に「完了印は立っているが完了記録が欠けている」整合性を検査する目的なので、log.md との突き合わせを行う。両者は役割が異なり棲み分けは矛盾しない
+  1. `Glob` でソース一覧を収集し、frontmatter `type` が取り込み済み値（`source` または旧 `source-summary`）のものに絞る
+  2. ソースの slug（ファイル名から `.md` を除いたもの）を NFC 正規化する
+  3. **全ジャンルの** `wiki/*/log.md` を対象に、当該 slug を参照する取り込み証跡があるか確認する。ソースを置いたジャンルと別のジャンル側で ingest されることがあるため、同ジャンルの log だけを見ない
+  4. 証跡の判定は緩めに行う。`ingest` / `save` / `recompile` の記録行、またはその配下の入れ子行に、`[[sources/<genre>/<slug>]]`・`[[<slug>]]`（`sources/` 接頭辞なし）・バッククォートのファイル名のいずれかが出現すれば証跡ありとみなす。過去の log には書式の揺れがあるため、厳密な行頭一致は求めない
+  5. どの log にも痕跡が無いものを「取り込み未完了」として扱う
+- 補足: ingest の**未取り込み判定**は frontmatter の `type` のみで行い log grep に依存しない（[conventions.md](conventions.md) の方針）。本観点は逆に「完了印は立っているが完了記録が欠けている」整合性を検査する目的なので、log.md との突き合わせを行う
 
-**proposals 生成**:
+**自動修正**:
 
-- `kind: ingest-incomplete`
-- `risk_flags: [judgment-required]`
-- `confidence: medium`
-- 提案内容: 対象ソースの frontmatter `generated_pages` を読み、log.md に補うべきエントリ案を書く。`generated_pages` があれば log 形式に転記する。空または未設定なら生成ページを特定できないため `/llm-wiki recompile <パス>` の実行を推奨する旨を明記する。log フォーマット（`ingest:` / `save:` の選択と転記）および apply 時の挙動は [proposals.md](proposals.md) の「kind 別の処理」を正典として参照する
+- `kind: ingest-incomplete` / `risk_flags: [judgment-required]`
+- 当該ソースを frontmatter `sources` に持つ wiki ページを Grep で特定する。見つかればそれを生成ページとして、ソースの `generated_pages` を補完し、log.md に補完エントリを追記する（log の書式は [proposals.md](proposals.md) の「kind 別の処理」に従う）
+- 生成ページが特定できなければ `/llm-wiki recompile <パス>` を実行する
 
-## proposals の書き出し
+## 修正記録（proposal ファイル）
 
-各検出項目で生成した proposals を `_proposals/` に書き出す:
+自動修正した内容は proposal ファイルとして記録する:
 
-- 配置先: 対象ページが属するジャンルの `wiki/<genre>/_proposals/`
-- ディレクトリが未作成の場合は `mkdir -p` で lazy 作成する
-- ジャンル横断する場合: [proposals.md](proposals.md) の「ジャンル横断の主ジャンル自動選択」ロジックに従って主ジャンルを決定
-- ファイル命名: `<YYYY-MM-DD>__<kind>__lint-<serial>.md`
-- frontmatter / 本文構造は [proposals.md](proposals.md) の「frontmatter スキーマ」「本文テンプレート」に従う
-- 初期 frontmatter は必ず `status: pending`
+- 配置先: 対象ページが属するジャンルの `wiki/<genre>/_proposals/applied/`（反映した場合）または `_proposals/rejected/`（検証で不採用にした場合）。ディレクトリは `mkdir -p` で lazy 作成
+- ジャンル横断する場合: [proposals.md](proposals.md) の「ジャンル横断の主ジャンル自動選択」ロジックに従う
+- ファイル命名: `<YYYY-MM-DD>__<kind>__lint-<serial>.md`（採番は [proposals.md](proposals.md) のルール）
+- frontmatter / 本文構造は [proposals.md](proposals.md) の「frontmatter スキーマ」「本文テンプレート」に従い、`status: applied` + `applied: <today>`、または `status: rejected` + `rejected: <today>` + 本文末尾に `## 却下理由` を付ける
+- 各ジャンルの `log.md` に、そのジャンルで行った修正を 1 エントリにまとめて追記する
+- 修正したページの `updated` は today にする
+
+## コミット
+
+全修正と記録が終わったら、Vault の git リポジトリにコミットする（Vault が Git 管理下にない場合はスキップし、完了レポートにその旨を書く）。
+
+- **lint が変更したファイルだけを個別に `git add` する**。`git add -A` / `git add .` は使わない（inbox の未処理ファイルやユーザーの作業中の変更を巻き込まないため）
+- 1 回の lint 実行を 1 コミットにまとめる
+- コミットメッセージは Vault の既存の書式に合わせる。例:
+
+  ```
+  docs(llm-wiki): lint auto-fix (link-fix 80, orphan-fix 1, missing-page 1)
+
+  - 5a link-fix: 80 件
+  - 3 missing-page: [[@concurrent属性]] を新規作成
+  - rejected: 3 件（理由は各 _proposals/rejected/ 参照）
+  ```
+
+- push はしない
+- ブランチは Vault の現在のブランチをそのまま使う
 
 ## 完了レポート
 
-proposals 書き出しの後、サマリレポートをコンソールに出力:
+コミット後、サマリをコンソールに出力する:
 
 ```markdown
 # Lint レポート — <today>
 
 対象: <vault全体 / ジャンル名>
 スキャンページ数: <n>
+コミット: <short hash>（切り戻し: `git revert <hash>`）
 
-## 検出サマリ
+| 項目 | 検出数 | apply | reject |
+|---|---|---|---|
+| 0. pending 消化 | <n> | <n> | <n> |
+| 1. 矛盾 | <n> | <n> | <n> |
+| 2. 孤立ページ | <n> | <n> | <n> |
+| 3. 不足ページ | <n> | <n> | <n> |
+| 4. 古い情報 | <n> | <n> | <n> |
+| 5a. 欠落リンク | <n> | <n> | <n> |
+| 5b. 関連性 | <n> | <n> | <n> |
+| 6. 取り込み不整合 | <n> | <n> | <n> |
 
-| 項目 | 検出数 | proposals 生成 |
-|---|---|---|
-| 1. 矛盾候補 | <n> | <n> 件 (judgment-required) |
-| 2. 孤立ページ | <n> | <n> 件 (judgment-required) |
-| 3. 不足ページ候補 | <n> | <n> 件 (hallucination-possible) |
-| 4. 古い情報候補 | <n> | <n> 件 (judgment-required) |
-| 5a. 欠落リンク候補 | <n> | <n> 件 (リスクなし) |
-| 5b. 関連性候補 | <n> | <n> 件 (low-precision) |
-| 6. 取り込み不整合候補 | <n> | <n> 件 (judgment-required) |
-
-## ジャンル別 proposals 配置
-
-- wiki/ai/_proposals/: <n>件 (⚠️<m>件)
-- wiki/swift/_proposals/: <n>件 (⚠️<m>件)
-- ...
-
-合計: <N>件の proposals を生成しました。
+## 要確認の修正
+<judgment-required / hallucination-possible を apply したもの（新規ページ・矛盾解消・stale 更新など）を 1 行ずつ列挙。ユーザーが後で目視確認しやすくするため>
 ```
 
-`⚠️` は `hallucination-possible` または `judgment-required` を含む提案を示す。
-
-## 対話的レビュー
-
-完了レポートの直後、[proposals.md](proposals.md) の「対話的レビューフロー」に従ってレビューを起動する:
-
-1. レビュー開始の確認 (`yes` / `later` / `apply-all-safe`)
-2. 各提案を順に表示し、`apply` / `edit` / `skip` / `reject` / `quit` の選択
-3. 完了レポート
-
-`apply-all-safe` を選んだ場合、`risk_flags` 空の提案（主に 5a `link-fix`）が一括で反映される。これは過去の bulk-link 化作業のような数十ファイル規模の一括リンク追記を半自動化する効果を持つ。
-
-大量件数 (10 件超) になる場合は [proposals.md](proposals.md) の「安全側のルール」に従い、5 件ごとに継続確認を挟む。
+検出が網羅的でないことをレポートに明記する。
 
 ## 重要な制約
 
-- **proposals 経由のみ反映可**。lint が直接 Wiki 本体を書き換えることはない。すべての修正はユーザーの `apply` を経由する
-- **`risk_flags` 空の link-fix は `apply-all-safe` で一括反映可**。これは「機械的に判定可能、誤検知ゼロ前提」の最小ノイズ提案として扱う
-- **検出が網羅的でないことを完了レポートに明記**し、「最終判断はユーザー」と添える
-- **`updated` の更新は apply 時のみ**。lint 自体は読み取り操作（および `_proposals/` への書き出し）で、Wiki ページの `updated` は触らない
+- **原典で裏付けの取れない記述は書かない**。自動修正の可否は「sources の raw 本文や既存ページで確認できたか」で決め、確認できなければ reject する
+- **既存ページの構造を尊重する**。追記・部分更新を基本とし、セクション丸ごとの差し替えやページ削除・大規模リネームは lint では行わない（必要ならレポートに提案として書くに留める）
+- **ソース raw 本文は変更しない**。`sources/` で変更してよいのは frontmatter のみ
 
 ## ingest との関係
 
-ingest が新ソースから新規ページを作る際、5a タイプの backlink 張りはその場で行わない設計のため、lint がこの役割を引き受ける。Vault が一定規模に達したら週次〜月次で lint を回し、`apply-all-safe` で link-fix を一括反映する運用が想定される。
+ingest が新ソースから新規ページを作る際、5a タイプの backlink 張りはその場で行わない設計のため、lint がこの役割を引き受ける。週次〜月次で lint を回し、全観点の修正をまとめて 1 コミットで反映する運用を想定する。

@@ -318,7 +318,7 @@ tags:
 | B-4 で frontmatter 整備失敗 | ソース本文は raw のまま、`type` 未設定 | 同上 |
 | B-5 で `_overview.md` 更新失敗 | `_overview.md` 部分編集の可能性、`type` 未設定 | 同上（再実行で B-5 から再走） |
 | B-6 の type 立て前で失敗 | `type` 未設定、log 未追記 | 同上（再実行で B-1 から再走） |
-| B-6 の type 立て後 / log 追記前で失敗 | `type` あり + log エントリなし（異常状態） | [lint.md](lint.md) の観点 6 で検出 → ユーザーに log を補完してもらう |
+| B-6 の type 立て後 / log 追記前で失敗 | `type` あり + log エントリなし（異常状態） | [lint.md](lint.md) の観点 6 で検出 → lint が log を自動補完（生成ページが特定できなければ recompile） |
 
 **設計原則**: `type: source` を立てるのは B-6 の中で **index 更新が終わり、log 追記の直前** に行う。これより前のステップで type を立ててはいけない（途中失敗時の再検出を可能にするため）。
 

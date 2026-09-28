@@ -1,6 +1,6 @@
 # proposals — 修正提案の共通システム
 
-`curiosity` と `lint` が生成する修正提案を `_proposals/` に隔離保存し、対話的レビューを経て Wiki 本体に反映する共通フレームワーク。`ingest` / `save` / `recompile` / `query` が「即時 Wiki 更新」であるのと対照的に、**提案 → 承認 → 適用** の 3 段階を踏む。
+`curiosity` と `lint` が生成する修正提案を `_proposals/` に保存し、Wiki 本体に反映する共通フレームワーク。`curiosity` は **提案 → 承認 → 適用** の 3 段階を踏み、対話的レビューを経て反映する。`lint` は承認段を省き、critic 検証を通した修正を自動で apply / reject し、proposal ファイルを監査証跡として `applied/` / `rejected/` に直接書き出す（詳細は [lint.md](lint.md)）。
 
 ## 役割
 
@@ -177,7 +177,7 @@ rejected: YYYY-MM-DD              # rejected/ に移動時にのみ追加
 | `new-page` | `wiki/<genre>/<新ページ名>.md` を作成。frontmatter を整形し、本文をコピー。`index.md` に追記（カテゴリ判断）。`_overview.md` の更新トリガーに該当すれば更新 |
 | `append` | 対象ページを Read。提案で指定されたセクション（または末尾 `## 詳細` 内）に Edit で追記 |
 | `contradiction` / `contradiction-found` | 対象ページの該当箇所を Edit で更新、または `## 補足` セクションを新設して両論を併記。sources セクションに新ソースを追加 |
-| `missing-page` | `new-page` と同じだが、apply 前に「ハルシネーション可能性が強い」旨を AskUserQuestion で再確認 |
+| `missing-page` | `new-page` と同じだが、apply 前に「ハルシネーション可能性が強い」旨を AskUserQuestion で再確認（lint からの自動 apply では再確認せず、[lint.md](lint.md) の観点 3 の基準＝原典で裏付けの取れた記述のみで compile する） |
 | `stale-fix` | 提案で指定されたセクションを Edit で更新 |
 | `link-fix` | 対象ファイル内の該当ベタテキストを `[[<ページ>]]` に Edit で置換 (位置情報 `<file>:<line>` は提案ファイルの参照情報。Edit は old_string/new_string マッチングで実行) |
 | `orphan-fix` | リンク元候補ページの `## 関連ページ` セクションに `- [[<孤立ページ>]] — <理由>` を追記。frontmatter の `related` にも追加 |
@@ -190,7 +190,7 @@ rejected: YYYY-MM-DD              # rejected/ に移動時にのみ追加
 
 ## 対話的レビューフロー
 
-`curiosity` / `lint` の実行末尾で発火する共通フロー。
+`curiosity` の実行末尾で発火するフロー。`lint` は対話的レビューを行わない（自動修正）。
 
 ### Step 1: レビュー開始の確認
 
@@ -247,7 +247,7 @@ pending 残存: 各ジャンルの _proposals/ を参照
 
 ## pending リマインド
 
-`curiosity` / `lint` を次回起動した際の冒頭で、`_proposals/` に残っている pending 提案を案内する。
+`curiosity` を次回起動した際の冒頭で、`_proposals/` に残っている pending 提案を案内する。`lint` は案内せず、Phase 0 で pending 提案を自動で apply / reject する（[lint.md](lint.md)）。
 
 ```
 [冒頭リマインド]
@@ -269,9 +269,9 @@ pending 残存: 各ジャンルの _proposals/ を参照
 - **skip = `status: pending` のまま**。次回リマインド対象に残る
 - **apply 時に対象ページの `updated` を today に**。これで `curiosity` のサンプリング指標が自然に動く
 - **applied/ に移動時、frontmatter に `applied: YYYY-MM-DD` を追加**。`status: applied` に変更
-- **`apply-all-safe` でも対象ページ数が多い場合は途中で進捗を出す**（10 件超なら 5 件ごとに「continue? (y/n)」を挟む）。`curiosity` / `lint` がこの条項を呼び出す
+- **`apply-all-safe` でも対象ページ数が多い場合は途中で進捗を出す**（10 件超なら 5 件ごとに「continue? (y/n)」を挟む）。`curiosity` がこの条項を呼び出す
 - **横断ページの主ジャンル誤りは edit で修正可**。`cross_genre` フィールドが残っているので、レビュー時にユーザーが気付ける
-- **自動コミットしない**。Vault が Git 管理下でも、git 操作はユーザーが明示的に指示した場合のみ
+- **自動コミットは lint のみ**。`lint` は実行ごとに 1 コミットを作る。`curiosity` のレビューで apply した変更は、ユーザーが明示的に指示した場合のみコミットする
 
 ## 他動詞との関係
 
@@ -284,6 +284,6 @@ SKILL.md の「即時更新 vs 提案経由」セクションが概観を提供�
 | `recompile` | 提案を生成しない（既存ページの追記・リンク更新は直接 Edit）|
 | `query` | 提案を生成しない。ただし `log.md` への追記で curiosity の除外集合に貢献する |
 | `curiosity` | 提案を生成する主要動詞 |
-| `lint` | 提案を生成する主要動詞 |
+| `lint` | 修正を自動 apply し、proposal ファイルを記録として `applied/` / `rejected/` に残す。実行ごとに自動コミット |
 
 判断基準の詳細は SKILL.md「即時更新 vs 提案経由」セクションを参照。

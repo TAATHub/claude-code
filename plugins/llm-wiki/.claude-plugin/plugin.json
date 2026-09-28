@@ -1,6 +1,6 @@
 {
   "name": "llm-wiki",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "LLM Wiki — Karpathy提唱の永続ナレッジベースをObsidian Vault上に構築・維持するスキル",
   "author": {
     "name": "TAAT"
