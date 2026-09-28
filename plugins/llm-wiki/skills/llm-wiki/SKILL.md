@@ -20,6 +20,10 @@ allowed-tools:
 
 Andrej Karpathy が提唱する「LLM Wiki」を Obsidian Vault 上に構築・維持するスキル。ソースは **raw 原文のまま保持**し（原典の immutable な raw sources レイヤーに相当）、要約・知識の構造化は Wiki ページ側が担う。両者を相互リンクで結び知識を蓄積していく。
 
+![LLM Wiki 主要機能とアクション](assets/llm-wiki-overview.png)
+
+図の元 HTML は `assets/llm-wiki-overview.html`。
+
 ## Vault パス（要設定）
 
 このスキルは Obsidian Vault のルートパスを環境変数で受け取る。**初回利用時にユーザー環境に合わせて設定**する。
@@ -96,20 +100,19 @@ Andrej Karpathy が提唱する「LLM Wiki」を Obsidian Vault 上に構築・�
 
 - **即時更新**: `ingest` / `save` / `recompile` — ユーザーが明示的に発火させた書き込み操作。即座に Wiki を更新する
 - **提案経由**: `curiosity` / `lint` — LLM 主導で検出・生成する操作。修正案を `_proposals/` に書き出し、対話的レビューを経て反映する
-- **読み取り中心**: `query` — Wiki を読み合成回答を返す。例外的に「軽微な追記で済む」と判定した場合のみ対象ページに直接 Edit する分岐がある（[query.md](references/query.md) ステップ6）。`log.md` への追記は必ず発生し、curiosity の除外集合に貢献する
+- **読み取り中心**: `query` — Wiki を読み合成回答を返す。例外的に「軽微な追記で済む」と判定した場合のみ対象ページに直接 Edit する分岐がある（[query.md](references/query.md) ステップ5）。`log.md` への追記は必ず発生し、curiosity の除外集合に貢献する
 
 詳細は [references/proposals.md](references/proposals.md) の「他動詞との関係」を参照。
 
 ## 検索の方針
 
-検索 (`query`) は **index ファースト + wikilink 辿り + Grep フォールバック** の順で行う。
+検索 (`query`) は **Grep 起点 + 周辺リンク拡張** で行う。index を上から辿らず、ページに直接当てる。
 
-- まず root の `$WIKI_ROOT/index.md` を読み、関連ジャンルを特定する
-- 次に該当ジャンルの `_overview.md`（知識マップ・横断テーマ）と `index.md`（カタログ）を読み、候補ページを選定
-- 候補ページを Read し、必要に応じて wikilink を 2hop まで辿る
-- どれにも当たらないときのみ Grep にフォールバックする
+- 質問のキーワードを表記ゆれ込みの正規表現にまとめ、`wiki/*/*.md` を横断 Grep して候補ページを特定する（ファイル名一致・synthesis・ヒット数で順位付け）
+- 上位ページを並列 Read し、足りなければ前方リンク（`[[wikilink]]`）と後方リンク（被リンク Grep）で 1hop だけ広げる
+- `index.md` / `_overview.md` は原則読まない。俯瞰型の質問か Grep が 0 件のときだけ `_overview.md` を使う
 - embedding ベース RAG は使わない（外部依存・freshness・auditability の観点から）
-- **Read は依存レベルごとに 1 メッセージ内で並列発行する**（root → ジャンルメタ → ページ の順に依存。同一レベル内のファイルは束ねて読み、逐次往復を避ける）
+- 同じステップ内の Grep / Read は 1 メッセージ内で並列発行する（往復は 2〜3 回が目安）
 
 詳細な実行手順は [references/query.md](references/query.md) を参照。
 

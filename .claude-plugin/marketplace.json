@@ -44,7 +44,7 @@
       "name": "llm-wiki",
       "source": "./plugins/llm-wiki",
       "description": "Karpathy提唱のLLM WikiパターンをObsidian Vault上に構築・維持するナレッジベーススキル",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "category": "productivity",
       "tags": ["wiki", "knowledge-base", "obsidian", "second-brain", "llm-wiki"]
     },

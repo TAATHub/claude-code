@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#1d2632;--dim:#5d6a7a;--faint:#98a3b3;--line:#cdd5e1;--blue:#1f6fe5;--green:#15a05a;--orange:#e2640f;--gray:#6b7788;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#e8ecf2;padding:40px;font-family:"IBM Plex Sans JP",sans-serif;color:var(--ink)}
+.panel{display:inline-block;background:#fff;border:1px solid var(--line);border-radius:14px;padding:28px 32px 22px}
+h1{font-family:"IBM Plex Mono",monospace;font-size:22px;font-weight:600;letter-spacing:.2px}
+h1 b{color:var(--blue);font-weight:600}
+h1 span{color:var(--faint);font-weight:400}
+.sub{font-size:13px;color:var(--dim);margin-top:6px}
+.main{display:flex;gap:22px;margin-top:20px;width:max-content}
+.lanes{display:flex;flex-direction:column;gap:14px;width:960px}
+.lane{border:1px solid var(--line);border-radius:12px;padding:14px 16px 14px;border-left:5px solid var(--c)}
+.lane-h{display:flex;align-items:baseline;gap:10px;margin-bottom:11px}
+.tag{font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;color:#fff;background:var(--c);padding:2px 8px;border-radius:4px;letter-spacing:.5px}
+.lane-h h2{font-size:16px;font-weight:700}
+.lane-h p{font-size:12px;color:var(--dim)}
+.flow{display:flex;align-items:stretch;gap:8px}
+.arrow{align-self:center;color:var(--faint);font-family:"IBM Plex Mono",monospace;font-size:18px;flex:0 0 auto}
+.box{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#f7f9fc;font-size:12px;line-height:1.5}
+.box .k{font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--faint);letter-spacing:.4px;display:block;margin-bottom:2px}
+.verbs{display:flex;flex-direction:column;gap:6px;flex:0 0 300px}
+.verb{border:1.5px solid var(--c);border-radius:8px;padding:7px 10px;background:#fff;display:flex;gap:10px;align-items:baseline}
+.verb code{font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:13.5px;color:var(--c);flex:0 0 92px}
+.verb span{font-size:12px;color:var(--ink);line-height:1.45}
+.inputs{display:flex;flex-direction:column;gap:6px;flex:0 0 140px;justify-content:center}
+.out{flex:1 1 auto;display:flex;flex-direction:column;justify-content:center;gap:6px}
+.steps{display:flex;gap:6px;align-items:center;flex-wrap:nowrap}
+.step{white-space:nowrap;border:1px solid var(--line);border-radius:7px;padding:6px 8px;font-size:11.5px;background:#fff;line-height:1.4;text-align:center}
+.step i{font-style:normal;font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--c);display:block;font-weight:600}
+.mini{color:var(--faint);font-family:"IBM Plex Mono",monospace;font-size:13px}
+.note{font-size:11px;color:var(--dim);margin-top:8px}
+/* vault */
+.vault{width:330px;border:1px solid var(--line);border-radius:12px;padding:14px 16px;background:#fbfcfe}
+.vault h2{font-size:15px;font-weight:700;margin-bottom:2px}
+.vault .p{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--faint);margin-bottom:10px}
+.tree{font-family:"IBM Plex Mono",monospace;font-size:12px;line-height:1.5}
+.node{border-radius:7px;padding:6px 9px;margin-bottom:6px;border:1px solid var(--line);background:#fff}
+.node .n{font-weight:600;color:var(--ink)}
+.node .d{font-family:"IBM Plex Sans JP",sans-serif;font-size:11px;color:var(--dim);display:block}
+.ind{margin-left:16px}
+.dots{display:flex;gap:4px;margin-top:3px}
+.dot{font-family:"IBM Plex Mono",monospace;font-size:9.5px;padding:0 5px;border-radius:3px;color:#fff;font-weight:600}
+.w{background:var(--blue)} .r{background:var(--green)} .pr{background:var(--orange)} .s{background:var(--gray)}
+.legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;font-size:11px;color:var(--dim);align-items:center}
+.loop{margin-top:16px;border-top:1px dashed var(--line);padding-top:14px;display:flex;align-items:center;gap:10px}
+.loop .lbl{font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:600;color:var(--dim);margin-right:4px}
+.lp{font-size:12px;border:1px solid var(--line);border-radius:999px;padding:5px 12px;background:#fff}
+.lp code{font-family:"IBM Plex Mono",monospace;font-weight:600;color:var(--c)}
+.foot{font-size:11px;color:var(--faint);margin-top:12px}
+</style></head><body>
+<div class="panel">
+  <h1><b>LLM Wiki</b> <span>· 主要機能とアクション</span></h1>
+  <div class="sub">Obsidian Vault 上に raw ソースと相互リンク付き Wiki ページを蓄積し、LLM が構築・検索・点検する</div>
+
+  <div class="main">
+    <div class="lanes">
+
+      <!-- 取り込み -->
+      <div class="lane" style="--c:var(--blue)">
+        <div class="lane-h"><span class="tag">WRITE · 即時更新</span><h2>取り込み・コンパイル</h2><p>ユーザーが発火し、その場で Wiki を更新</p></div>
+        <div class="flow">
+          <div class="inputs">
+            <div class="box"><span class="k">URL / FILE</span>記事・ドキュメント</div>
+            <div class="box"><span class="k">INBOX</span>Web Clipper の保存物</div>
+            <div class="box"><span class="k">CONVERSATION</span>Claude Code の会話</div>
+          </div>
+          <div class="arrow">→</div>
+          <div class="verbs">
+            <div class="verb" style="--c:var(--blue)"><code>ingest</code><span>ソース取り込み＋コンパイル。inbox はジャンル自動振り分け</span></div>
+            <div class="verb" style="--c:var(--blue)"><code>save</code><span>会話の知見を source 化して取り込み</span></div>
+            <div class="verb" style="--c:var(--blue)"><code>recompile</code><span>取り込み済みソースを現 Wiki に対し再評価</span></div>
+          </div>
+          <div class="arrow">→</div>
+          <div class="out">
+            <div class="steps" style="--c:var(--blue)">
+              <div class="step"><i>A</i>raw 原文を<br>sources/ に保存</div><span class="mini">›</span>
+              <div class="step"><i>B</i>Wiki ページ<br>作成・更新</div><span class="mini">›</span>
+              <div class="step"><i>C</i>overview /<br>index / log</div>
+            </div>
+            <div class="note">完了時に <b>type: source</b> を立てる（冪等・途中失敗は再実行で復旧）</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 検索 -->
+      <div class="lane" style="--c:var(--green)">
+        <div class="lane-h"><span class="tag">READ · 読み取り中心</span><h2>検索・統合回答</h2><p>Grep 起点で当て、周辺リンクで広げる</p></div>
+        <div class="flow">
+          <div class="inputs"><div class="box"><span class="k">QUESTION</span>自然文の質問</div></div>
+          <div class="arrow">→</div>
+          <div class="verbs"><div class="verb" style="--c:var(--green)"><code>query</code><span>Wiki を検索し、引用付きで統合回答</span></div></div>
+          <div class="arrow">→</div>
+          <div class="out">
+            <div class="steps" style="--c:var(--green)">
+              <div class="step"><i>1</i>表記ゆれ込み<br>横断 Grep</div><span class="mini">›</span>
+              <div class="step"><i>2</i>上位 5 頁<br>並列 Read</div><span class="mini">›</span>
+              <div class="step"><i>3</i>前方/後方<br>リンク 1hop</div><span class="mini">›</span>
+              <div class="step"><i>4</i>回答<br>＋ log</div>
+            </div>
+            <div class="note">新切り口が出たときだけ save を提案 ／ 拡張は最大 3 頁・合計 8 頁上限</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 点検 -->
+      <div class="lane" style="--c:var(--orange)">
+        <div class="lane-h"><span class="tag">PROPOSE · 提案経由</span><h2>点検・成長</h2><p>LLM 主導で検出し、承認を経て反映</p></div>
+        <div class="flow">
+          <div class="inputs"><div class="box"><span class="k">VAULT</span>既存 Wiki 全体</div></div>
+          <div class="arrow">→</div>
+          <div class="verbs">
+            <div class="verb" style="--c:var(--orange)"><code>lint</code><span>矛盾・孤立・不足・古さ・相互参照不足などを検出</span></div>
+            <div class="verb" style="--c:var(--orange)"><code>curiosity</code><span>最近触れていないページから質問を自動生成し自答</span></div>
+          </div>
+          <div class="arrow">→</div>
+          <div class="out">
+            <div class="steps" style="--c:var(--orange)">
+              <div class="step"><i>1</i>_proposals/<br>に隔離</div><span class="mini">›</span>
+              <div class="step"><i>2</i>対話的<br>レビュー</div><span class="mini">›</span>
+              <div class="step"><i>3</i>apply /<br>reject / skip</div>
+            </div>
+            <div class="note">curiosity は critic 評価で価値の低い提案を落とす</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- セットアップ -->
+      <div class="lane" style="--c:var(--gray);padding:10px 16px">
+        <div class="flow" style="align-items:center">
+          <span class="tag" style="margin-right:6px">SETUP</span>
+          <div class="verb" style="--c:var(--gray);flex:0 0 auto"><code style="flex:0 0 auto">init _root</code><span>Vault 全体構造（初回のみ）</span></div>
+          <div class="verb" style="--c:var(--gray);flex:0 0 auto"><code style="flex:0 0 auto">init &lt;genre&gt;</code><span>ジャンルのスケルトン（index / log / _overview）</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- vault -->
+    <div class="vault">
+      <h2>Vault 構造</h2>
+      <div class="p">$LLM_WIKI_VAULT_ROOT/llm-wiki/</div>
+      <div class="tree">
+        <div class="node"><span class="n">index.md</span><span class="d">全ジャンル一覧</span><div class="dots"><span class="dot s">init</span><span class="dot w">ingest</span></div></div>
+        <div class="node"><span class="n">inbox/</span><span class="d">未分類ソースの受け皿</span><div class="dots"><span class="dot w">ingest で triage</span></div></div>
+        <div class="node"><span class="n">sources/&lt;genre&gt;/</span><span class="d">raw 原文（本文は不変・メタのみ更新）</span><div class="dots"><span class="dot w">ingest</span><span class="dot w">save</span><span class="dot w">recompile</span></div></div>
+        <div class="node"><span class="n">wiki/&lt;genre&gt;/</span><span class="d">ジャンル単位の知識</span></div>
+        <div class="ind">
+          <div class="node"><span class="n">&lt;ページ&gt;.md</span><span class="d">概念・比較・synthesis。[[wikilink]] で相互参照</span><div class="dots"><span class="dot w">write</span><span class="dot r">query</span><span class="dot pr">apply</span></div></div>
+          <div class="node"><span class="n">_overview.md</span><span class="d">知識マップ・横断テーマ</span><div class="dots"><span class="dot w">write</span><span class="dot r">俯瞰時</span></div></div>
+          <div class="node"><span class="n">index.md</span><span class="d">ページカタログ</span><div class="dots"><span class="dot w">write</span><span class="dot pr">sampling</span></div></div>
+          <div class="node"><span class="n">log.md</span><span class="d">操作ログ（追記専用）→ curiosity の除外集合</span><div class="dots"><span class="dot w">all</span><span class="dot r">query</span><span class="dot pr">curiosity</span></div></div>
+          <div class="node"><span class="n">_proposals/</span><span class="d">修正提案（applied / rejected にアーカイブ）</span><div class="dots"><span class="dot pr">lint</span><span class="dot pr">curiosity</span></div></div>
+        </div>
+      </div>
+      <div class="legend"><span class="dot w">&nbsp;</span>書き込み <span class="dot r">&nbsp;</span>読み取り <span class="dot pr">&nbsp;</span>提案</div>
+    </div>
+  </div>
+
+  <div class="loop">
+    <span class="lbl">運用ループ</span>
+    <div class="lp" style="--c:var(--blue)"><code>ingest</code> 外部知識を足す</div><span class="mini">→</span>
+    <div class="lp" style="--c:var(--green)"><code>query</code> 引いて使う</div><span class="mini">→</span>
+    <div class="lp" style="--c:var(--blue)"><code>save</code> 得た洞察を還元</div><span class="mini">→</span>
+    <div class="lp" style="--c:var(--orange)"><code>lint</code>/<code>curiosity</code> 穴と劣化を点検</div><span class="mini">→</span>
+    <div class="lp" style="--c:var(--blue)"><code>recompile</code> 古い取り込みを更新</div><span class="mini">↺</span>
+  </div>
+  <div class="foot">embedding RAG は使わず、ファイルとリンクだけで完結。git 操作はユーザーの明示指示時のみ。</div>
+</div>
+</body></html>
