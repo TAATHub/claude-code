@@ -80,7 +80,7 @@ Andrej Karpathy が提唱する「LLM Wiki」を Obsidian Vault 上に構築・�
 | `save [タイトル]` | 直前会話を `source_kind: conversation` として取り込み + コンパイル | [references/save.md](references/save.md) |
 | `recompile <パス>` | 取り込み済みソースの再コンパイル（メンテナンス用、引数必須） | [references/recompile.md](references/recompile.md) |
 | `query <質問>` | Wiki検索・統合回答・必要なら新ページ提案 | [references/query.md](references/query.md) |
-| `lint` | Vault健全性チェック + 修正案を proposals として書き出し | [references/lint.md](references/lint.md) |
+| `lint` | Vault健全性チェック + 全観点の自動修正 + 自動コミット | [references/lint.md](references/lint.md) |
 | `curiosity [--budget N=5]` | Wiki全体を能動的に点検し、自動生成質問の結果を proposals として書き出し（N 省略時は 5 ページ） | [references/curiosity.md](references/curiosity.md) |
 
 ## 取り込み状態の判定
@@ -91,15 +91,16 @@ Andrej Karpathy が提唱する「LLM Wiki」を Obsidian Vault 上に構築・�
 
 - **記述規約**（frontmatter / wikilink / 言語）: [references/conventions.md](references/conventions.md)
 - **判断基準**（ページ新規/更新/分割、query結果の保存可否）: [references/decision-rules.md](references/decision-rules.md)
-- **提案システム**（curiosity/lint の修正案隔離・対話的レビュー・apply セマンティクス）: [references/proposals.md](references/proposals.md)
+- **提案システム**（curiosity の修正案隔離・対話的レビュー、curiosity/lint 共通の apply セマンティクスと記録形式）: [references/proposals.md](references/proposals.md)
 - 各操作の最後に必ず `wiki/<genre>/log.md` に追記し、何をしたかを残す。
 
 ## 即時更新 vs 提案経由
 
-動詞は Wiki 本体への反映方法で 2 系統に分かれる:
+動詞は Wiki 本体への反映方法で 3 系統に分かれる:
 
 - **即時更新**: `ingest` / `save` / `recompile` — ユーザーが明示的に発火させた書き込み操作。即座に Wiki を更新する
-- **提案経由**: `curiosity` / `lint` — LLM 主導で検出・生成する操作。修正案を `_proposals/` に書き出し、対話的レビューを経て反映する
+- **提案経由**: `curiosity` — LLM 主導で問いを立てて新しい知見を生成する操作。修正案を `_proposals/` に書き出し、対話的レビューを経て反映する
+- **自動修正 + 自動コミット**: `lint` — Vault の健全性を全観点で点検し、原典で裏付けを取ったうえで自動修正して 1 コミットにまとめる。切り戻しは `git revert` で行う（[lint.md](references/lint.md)）
 - **読み取り中心**: `query` — Wiki を読み合成回答を返す。例外的に「軽微な追記で済む」と判定した場合のみ対象ページに直接 Edit する分岐がある（[query.md](references/query.md) ステップ5）。`log.md` への追記は必ず発生し、curiosity の除外集合に貢献する
 
 詳細は [references/proposals.md](references/proposals.md) の「他動詞との関係」を参照。
@@ -118,7 +119,7 @@ Andrej Karpathy が提唱する「LLM Wiki」を Obsidian Vault 上に構築・�
 
 ## 安全側の方針
 
-- **自動コミットしない**: Vaultが Git管理下でも、git操作はユーザーが明示的に指示した場合のみ。
+- **自動コミットは lint のみ**: `lint` は自動修正の結果を Vault にコミットする（変更ファイルのみ個別 add、push はしない）。それ以外の動詞では、git 操作はユーザーが明示的に指示した場合のみ。
 - **ソース raw 本文は変更不可**: `sources/` には取得した原文をそのまま保持する。更新してよいのは frontmatter メタのみで、本文テキストは要約・改変しない。
 - **破壊的操作の前確認**: ページ削除・大規模リネームはユーザー確認を取ってから実施。
 - **日付は実時刻**: frontmatter の `created`/`updated` や log エントリは Bash の `date` コマンドで取得した値を使う。
